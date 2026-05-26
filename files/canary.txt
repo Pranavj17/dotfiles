@@ -1,0 +1,2 @@
+This file is managed by Home Manager (Phase 1).
+Delete this entry from home/files.nix once you trust the setup.
