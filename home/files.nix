@@ -29,5 +29,16 @@
     ".claude/projects/-Users-pranav-j-Documents-memory/memory/metabase-lead-id-lookup.md".source              = ../files/claude/projects-memory/metabase-lead-id-lookup.md;
     ".claude/projects/-Users-pranav-j-Documents-memory/memory/nested-claude-headless-sandbox.md".source       = ../files/claude/projects-memory/nested-claude-headless-sandbox.md;
     ".claude/projects/-Users-pranav-j-Documents-memory/memory/secrets-keychain-preference.md".source          = ../files/claude/projects-memory/secrets-keychain-preference.md;
+
+    ".claude-bot/CLAUDE.md".source = ../files/claude-bot/CLAUDE.md;
+    ".claude-bot/.mcp.json".source = ../files/claude-bot/.mcp.json;
+    ".claude-bot/memory/echo-personality.md".source       = ../files/claude-bot/memory/echo-personality.md;
+    ".claude-bot/memory/pranav-profile.md".source         = ../files/claude-bot/memory/pranav-profile.md;
+    ".claude-bot/memory/pranav-claude-insights.md".source = ../files/claude-bot/memory/pranav-claude-insights.md;
+    ".claude-bot/memory/alacritty-keybindings.md".source  = ../files/claude-bot/memory/alacritty-keybindings.md;
+    ".claude-bot/memory/nix-setup.md".source              = ../files/claude-bot/memory/nix-setup.md;
+    ".claude-bot/memory/scripbox-repositories.md".source  = ../files/claude-bot/memory/scripbox-repositories.md;
+    ".claude-bot/memory/vpn-setup.md".source              = ../files/claude-bot/memory/vpn-setup.md;
+    ".claude-bot/memory/secret-rotation-helpers.md".source = ../files/claude-bot/memory/secret-rotation-helpers.md;
   };
 }

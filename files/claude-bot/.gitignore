@@ -1,0 +1,11 @@
+# Per-session auto memory dumps — regenerated every session
+memory/auto-*.md
+
+# Runtime state — never tracked
+logs/
+processes/
+crons/
+.remember/
+daemon.pid
+session-id
+.claude/         # nested claude state inside the bot's home

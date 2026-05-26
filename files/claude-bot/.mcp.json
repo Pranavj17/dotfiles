@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "claude-bot": {
+      "command": "bun",
+      "args": [
+        "run",
+        "/Users/pranav.j/.claude/plugins/cache/claude-community/claude-bot/0.1.0/server.ts"
+      ]
+    }
+  }
+}
