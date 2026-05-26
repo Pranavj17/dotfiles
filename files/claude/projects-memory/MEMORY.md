@@ -17,4 +17,5 @@
 - [Advisory Peach Argus arity bug](advisory-peach-portfolio-argus-arity.md) — pre-existing: peach/portfolio.ex calls Advisory.Argus.user_graph/2 but only /1 exists → UndefinedFunctionError + failing test; fallout from FP-era Argus /2→/1 refactor
 - [NVIDIA Flux Schnell quirks](nvidia-flux-schnell-quirks.md) — ai.api.nvidia.com Flux Schnell needs cfg_scale=0, steps≤4; JPEG response; content filter blocks trademarked character names → describe emblem instead
 - [minibot Mac mini](minibot-mac-mini.md) — minibot@10.10.30.4 (SB-312.local), M4 Pro arm64, keyless SSH via id_ed25519; Ollama text LLMs only, NO image-gen software, NO NVIDIA hardware
-- [dotfiles repo](dotfiles-repo.md) — ~/dotfiles HM-standalone flake → out-of-store symlinks for zshrc/starship/alacritty/.claude/.claude-bot/.local/bin; `make switch`; remote: Pranavj17/dotfiles tagged phase-1
+- [dotfiles repo](dotfiles-repo.md) — ~/dotfiles HM + nix-darwin flake; `make switch` runs both layers; remote Pranavj17/dotfiles tagged phase-1/2/3; brew bundle declared (14 formulas + 5 casks)
+- [brew bundle cleanup=uninstall pitfall](brew-bundle-cleanup-uninstall-pitfall.md) — nix-darwin `homebrew.onActivation.cleanup="uninstall"` wipes EVERY undeclared brew formula/cask. Default to "none" until declared list is exhaustive
