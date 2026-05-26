@@ -36,7 +36,7 @@ Decision is locked: full mac scope, rolled out in three phases.
 ~/dotfiles/
 ├── flake.nix              # inputs: nixpkgs, home-manager, nix-darwin
 ├── flake.lock             # pinned versions — the reproducibility guarantee
-├── Makefile               # bootstrap: make install, make switch, make test
+├── Makefile               # interface: install / switch / test / update (defined below)
 ├── README.md
 ├── docs/specs/            # this file lives here
 ├── system/                # nix-darwin (mac-level)        — Phase 2
@@ -91,6 +91,15 @@ Decision is locked: full mac scope, rolled out in three phases.
 - `secret get|set|rm <name>` (already in `~/.zshrc`) is the universal accessor.
 - Where Nix needs a secret at runtime, interpolate via `secret get` in the shell command (e.g., `programs.zsh.sessionVariables.GRAYLOG_API_TOKEN = "$(secret get GRAYLOG_API_TOKEN)"` becomes a sourced-line in `initExtra`, not a build-time value).
 - Repo is public; nothing secret is ever committed.
+
+## Makefile interface
+
+| Target | What it does |
+|---|---|
+| `make install` | First-time bootstrap on a new machine: install Nix (if absent), then run `darwin-rebuild switch --flake .#$(hostname)`. Idempotent. |
+| `make switch` | Apply the current flake: `darwin-rebuild switch --flake .#$(hostname)` then `make test`. The day-to-day verb. |
+| `make test` | Run `tests/smoke.sh` (see below). |
+| `make update` | `nix flake update` (refresh `flake.lock`) then `make switch`. The deliberate-upgrade verb. |
 
 ## Testing
 
