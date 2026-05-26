@@ -16,7 +16,16 @@
   outputs = { nixpkgs, home-manager, nix-darwin, ... }:
     let
       system = "aarch64-darwin";
-      pkgs   = import nixpkgs { inherit system; };
+      pkgs   = import nixpkgs {
+        inherit system;
+        config = {
+          allowUnfree = true;  # required for terraform (BSL-1.1)
+          permittedInsecurePackages = [
+            "nodejs-20.20.2"       # nodejs_20 is EOL but kept for compatibility
+            "nodejs-slim-20.20.2"  # slim variant required by yarn
+          ];
+        };
+      };
     in {
       homeConfigurations."pranav.j" = home-manager.lib.homeManagerConfiguration {
         inherit pkgs;

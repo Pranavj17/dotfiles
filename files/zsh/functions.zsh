@@ -4,6 +4,9 @@ export PATH="/opt/homebrew/bin:$PATH"
 # Personal scripts (e.g. har-extract)
 export PATH="$HOME/.local/bin:$PATH"
 
+# bun's global bin (where `bun install -g <pkg>` puts binaries — e.g. claude)
+export PATH="$HOME/.bun/bin:$PATH"
+
 # Run all shell-tooling regression tests (statusline + secret helper)
 alias shelltest='bash ~/.config/shell-tests/run.sh'
 
