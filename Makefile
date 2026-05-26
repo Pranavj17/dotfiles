@@ -10,6 +10,8 @@ help:
 
 install:
 	@command -v nix >/dev/null || (echo "Install Nix first: sh <(curl -L https://nixos.org/nix/install) --daemon" && exit 1)
+	git config core.hooksPath .githooks
+	chmod +x .githooks/pre-commit
 	nix run home-manager/release-24.11 -- switch --flake .#$(USER)
 	$(MAKE) test
 

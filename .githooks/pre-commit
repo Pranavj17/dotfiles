@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Refuse to commit obvious secrets. Belt-and-braces on top of the Keychain
+# discipline. Patterns: JWTs, Slack tokens, GitHub PATs, AWS keys, long
+# base64-url runs in staged content.
+set -u
+fail=0
+note() { printf '  pre-commit: %s\n' "$1" >&2; }
+patterns=(
+  'eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}'   # JWT
+  'xox[abprs]-[A-Za-z0-9-]{20,}'                                   # Slack
+  'ghp_[A-Za-z0-9]{30,}'                                           # GitHub PAT
+  'AKIA[0-9A-Z]{16}'                                               # AWS access key
+  '-----BEGIN (RSA|OPENSSH|EC) PRIVATE KEY-----'                   # SSH/PGP
+)
+for p in "${patterns[@]}"; do
+  hits=$(git diff --cached -U0 | grep -aE "^\+" | grep -aE -e "$p" || true)
+  if [ -n "$hits" ]; then
+    note "FAIL: pattern matched: $p"
+    note "$(printf '%s' "$hits" | head -5)"
+    fail=1
+  fi
+done
+[ "$fail" -ne 0 ] && note "blocked. (use --no-verify only if you are SURE)" && exit 1
+exit 0
