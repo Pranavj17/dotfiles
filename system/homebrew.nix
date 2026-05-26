@@ -47,6 +47,7 @@
       "ollama"               # local LLM runner
       "pandoc"               # universal doc converter
       "poppler"              # PDF toolkit (pdftotext, pdfimages)
+      "watchman"             # file watcher (React Native, doc watchers)
     ];
 
     casks = [
@@ -55,6 +56,7 @@
       "google-chrome"
       "maccy"                # clipboard manager; restored after accidental cleanup
       "tunnelblick"
+      "visual-studio-code"   # VS Code GUI
       # NOTE: Tailscale.app exists in /Applications but was installed via DMG,
       # not brew cask — keep it that way (avoids re-install on next switch).
       # Future additions (per spec): "cursor", "docker"  — currently NOT installed
