@@ -1,0 +1,32 @@
+# Alacritty configuration
+
+# Nerd Font: gives Starship/zsh the powerline + icon glyphs.
+# Installed via Nix (nerd-fonts.meslo-lg) and copied into ~/Library/Fonts.
+[font]
+size = 12.0
+normal = { family = "MesloLGS Nerd Font", style = "Regular" }
+bold = { family = "MesloLGS Nerd Font", style = "Bold" }
+italic = { family = "MesloLGS Nerd Font", style = "Italic" }
+bold_italic = { family = "MesloLGS Nerd Font", style = "Bold Italic" }
+
+[keyboard]
+# Cmd+Enter inserts a newline in Claude Code's prompt. It sends Ctrl+J (0x0A),
+# which is Claude Code's universal "insert newline" key (no /terminal-setup
+# needed). NOTE: this is for the Claude Code TUI; at a bare zsh prompt Ctrl+J
+# means submit, not newline.
+bindings = [
+  { key = "Return", mods = "Command", chars = "\n" },
+
+  # Shift+Enter also inserts a newline in Claude Code's prompt. Same mechanism
+  # as Cmd+Enter: sends Ctrl+J (0x0A), Claude Code's universal "insert newline"
+  # key. Without this binding Alacritty sends the default CR (0x0D = submit).
+  { key = "Return", mods = "Shift", chars = "\n" },
+
+  # Cmd+Delete clears the whole line (Ctrl-U = 0x15; zsh kill-whole-line).
+  { key = "Back", mods = "Command", chars = "\u0015" },
+
+  # macOS native tabs (browser-style): Cmd+T new, Cmd+Opt+Left/Right switch.
+  { key = "T",     mods = "Command",     action = "CreateNewTab" },
+  { key = "Right", mods = "Command|Alt", action = "SelectNextTab" },
+  { key = "Left",  mods = "Command|Alt", action = "SelectPreviousTab" },
+]

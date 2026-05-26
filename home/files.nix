@@ -6,5 +6,6 @@
     ".config/shell-tests/secret.sh"     = { source = ../files/shell-tests/secret.sh;       executable = true; };
     ".config/shell-tests/run.sh"        = { source = ../files/shell-tests/run.sh;          executable = true; };
     ".config/starship.toml"             .source = ../files/starship/starship.toml;
+    ".config/alacritty/alacritty.toml" .source = ../files/alacritty/alacritty.toml;
   };
 }
