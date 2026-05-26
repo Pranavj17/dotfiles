@@ -16,8 +16,11 @@
   # The primary user for user-scoped options (homebrew, launchd.user.*).
   system.primaryUser = "pranav.j";
 
-  # Enable flakes + nix-command for darwin-rebuild itself.
-  nix.settings.experimental-features = [ "nix-command" "flakes" ];
+  # Determinate Nix manages the Nix installation; disable nix-darwin's
+  # native Nix management to avoid the "Determinate detected, aborting
+  # activation" error.  Flakes + nix-command are already enabled by
+  # Determinate's daemon config.
+  nix.enable = false;
 
   # Required so /run/current-system points at our config after activation.
   programs.zsh.enable = true;
