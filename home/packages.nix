@@ -18,6 +18,7 @@
     # AWS / infra
     awscli2
     chamber
+    sops
     terraform
     terragrunt
 
