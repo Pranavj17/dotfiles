@@ -27,6 +27,13 @@ for f in settings.json keybindings.json statusline-command.sh statusline/test.sh
   [ -L "$HOME/.claude/$f" ] && ok ".claude/$f" || bad ".claude/$f"
 done
 
+echo "== claude-bot daemon =="
+if launchctl print "gui/$UID/com.claude-bot.daemon" 2>/dev/null | grep -qE 'state\s*=\s*running'; then
+  ok "claude-bot launchd running"
+else
+  bad "claude-bot launchd NOT running"
+fi
+
 echo
 [ "$fail" -eq 0 ] && echo "✅ smoke PASSED" || echo "❌ smoke FAILED"
 exit "$fail"
