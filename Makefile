@@ -13,10 +13,17 @@ install:
 	git config core.hooksPath .githooks
 	chmod +x .githooks/pre-commit
 	sudo nix run nix-darwin -- switch --flake .#$(HOST)
+	nix run home-manager/release-24.11 -- switch --flake .#$(USER)
 	$(MAKE) test
 
+# `switch` applies BOTH layers:
+#   1. nix-darwin (system defaults, brew bundle, launchd) — needs sudo.
+#   2. home-manager (user env: zsh init, starship, packages, dotfiles).
+# darwin-rebuild does NOT activate HM unless wired explicitly; we keep them
+# separate so each can be debugged independently.
 switch:
 	sudo nix run nix-darwin -- switch --flake .#$(HOST)
+	nix run home-manager/release-24.11 -- switch --flake .#$(USER)
 	$(MAKE) test
 
 test:
