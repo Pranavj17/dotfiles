@@ -5,5 +5,6 @@
     ".local/bin/elixir-version-cached"  = { source = ../files/bin/elixir-version-cached;   executable = true; };
     ".config/shell-tests/secret.sh"     = { source = ../files/shell-tests/secret.sh;       executable = true; };
     ".config/shell-tests/run.sh"        = { source = ../files/shell-tests/run.sh;          executable = true; };
+    ".config/starship.toml"             .source = ../files/starship/starship.toml;
   };
 }
