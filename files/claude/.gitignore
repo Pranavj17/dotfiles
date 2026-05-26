@@ -1,0 +1,21 @@
+# Per-session auto-memory dumps — regenerated every session, do not track
+auto-*.md
+
+# Claude Code internal state — never tracked
+plugins/
+projects/*.jsonl
+cache/
+image-cache/
+paste-cache/
+file-history/
+session-env/
+sessions/
+shell-snapshots/
+tasks/
+telemetry/
+usage-data/
+backups/
+chrome/
+history.jsonl
+.last-cleanup
+mcp-needs-auth-cache.json

@@ -16,5 +16,18 @@
     ".claude/statusline/gen-greeter.sh"             = { source = ../files/claude/statusline/gen-greeter.sh;    executable = true; };
     ".claude/statusline/gen-slot.sh"                = { source = ../files/claude/statusline/gen-slot.sh;       executable = true; };
     ".claude/statusline/test.sh"                    = { source = ../files/claude/statusline/test.sh;           executable = true; };
+
+    ".claude/projects/-Users-pranav-j-Documents-memory/memory/MEMORY.md".source                                = ../files/claude/projects-memory/MEMORY.md;
+    ".claude/projects/-Users-pranav-j-Documents-memory/memory/dev-env-nix-toolchain.md".source                = ../files/claude/projects-memory/dev-env-nix-toolchain.md;
+    ".claude/projects/-Users-pranav-j-Documents-memory/memory/milky-way-repo.md".source                       = ../files/claude/projects-memory/milky-way-repo.md;
+    ".claude/projects/-Users-pranav-j-Documents-memory/memory/nix-npx-broken-prefix.md".source                = ../files/claude/projects-memory/nix-npx-broken-prefix.md;
+    ".claude/projects/-Users-pranav-j-Documents-memory/memory/apps-repo-clean-build.md".source                = ../files/claude/projects-memory/apps-repo-clean-build.md;
+    ".claude/projects/-Users-pranav-j-Documents-memory/memory/kubelogin-port-8000-chroma-collision.md".source = ../files/claude/projects-memory/kubelogin-port-8000-chroma-collision.md;
+    ".claude/projects/-Users-pranav-j-Documents-memory/memory/alacritty-toml-escapes.md".source               = ../files/claude/projects-memory/alacritty-toml-escapes.md;
+    ".claude/projects/-Users-pranav-j-Documents-memory/memory/claude-bot-plugin-bun.md".source                = ../files/claude/projects-memory/claude-bot-plugin-bun.md;
+    ".claude/projects/-Users-pranav-j-Documents-memory/memory/scripbox-vpn-endpoint.md".source                = ../files/claude/projects-memory/scripbox-vpn-endpoint.md;
+    ".claude/projects/-Users-pranav-j-Documents-memory/memory/metabase-lead-id-lookup.md".source              = ../files/claude/projects-memory/metabase-lead-id-lookup.md;
+    ".claude/projects/-Users-pranav-j-Documents-memory/memory/nested-claude-headless-sandbox.md".source       = ../files/claude/projects-memory/nested-claude-headless-sandbox.md;
+    ".claude/projects/-Users-pranav-j-Documents-memory/memory/secrets-keychain-preference.md".source          = ../files/claude/projects-memory/secrets-keychain-preference.md;
   };
 }
