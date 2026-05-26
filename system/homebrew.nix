@@ -27,15 +27,36 @@
     ];
 
     brews = [
-      # CLI tools — none in Phase 2; we prefer Nix-managed equivalents.
+      # CLI tools we want managed by brew (not Nix). Reasons to be here:
+      #   - macOS-specific tooling (autojump's profile.d hook expects /opt/homebrew)
+      #   - apps with native services (colima, ollama) that brew installs cleanly
+      #   - tools where the brew version is the canonical/blessed one (docker CLI)
+      # All of these were lost in the earlier brew bundle cleanup="uninstall"
+      # incident; declared here so they survive every future `darwin-rebuild`.
+      "autojump"             # referenced by ~/.zshrc; `j <partial-dir>` jump
+      "colima"               # docker daemon backend (lightweight VM)
+      "docker"               # docker CLI
+      "docker-compose"       # compose plugin
+      "ffmpeg"               # video/audio processing
+      "gh"                   # GitHub CLI
+      "ghostscript"          # PDF/PS toolchain
+      "helm"                 # k8s package manager
+      "imagemagick"          # image processing
+      "k9s"                  # k8s TUI
+      "kubernetes-cli"       # kubectl
+      "ollama"               # local LLM runner
+      "pandoc"               # universal doc converter
+      "poppler"              # PDF toolkit (pdftotext, pdfimages)
     ];
 
     casks = [
       "alacritty"
       "claude"
       "google-chrome"
-      "maccy"          # clipboard manager; restored after accidental cleanup
+      "maccy"                # clipboard manager; restored after accidental cleanup
       "tunnelblick"
+      # NOTE: Tailscale.app exists in /Applications but was installed via DMG,
+      # not brew cask — keep it that way (avoids re-install on next switch).
       # Future additions (per spec): "cursor", "docker"  — currently NOT installed
       # on this machine. Uncomment + switch to install.
     ];
