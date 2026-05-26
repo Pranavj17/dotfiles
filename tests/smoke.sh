@@ -22,6 +22,11 @@ bash "$HOME/.config/shell-tests/run.sh" >/dev/null && ok "shelltest 28/28" || ba
 echo "== starship prompt renders =="
 ( cd "$HOME" && starship prompt --terminal-width=120 >/dev/null ) && ok "starship prompt" || bad "starship prompt"
 
+echo "== claude config files symlinked =="
+for f in settings.json keybindings.json statusline-command.sh statusline/test.sh; do
+  [ -L "$HOME/.claude/$f" ] && ok ".claude/$f" || bad ".claude/$f"
+done
+
 echo
 [ "$fail" -eq 0 ] && echo "✅ smoke PASSED" || echo "❌ smoke FAILED"
 exit "$fail"

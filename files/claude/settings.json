@@ -1,0 +1,59 @@
+{
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun run /Users/pranav.j/.claude/plugins/cache/claude-community/claude-bot/0.1.0/bin/recall-hook.ts"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bun run /Users/pranav.j/.claude/plugins/cache/claude-community/claude-bot/0.1.0/bin/collect-hook.ts"
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash /Users/pranav.j/.claude/statusline-command.sh",
+    "refreshInterval": 10
+  },
+  "enabledPlugins": {
+    "frontend-design@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true,
+    "github@claude-plugins-official": true,
+    "playwright@claude-plugins-official": true,
+    "code-review@claude-plugins-official": true,
+    "context7@claude-plugins-official": true,
+    "slack@claude-plugins-official": true,
+    "graylog-log-search@pranavj17": true,
+    "remember@claude-plugins-official": true,
+    "claude-bot@claude-community": true
+  },
+  "extraKnownMarketplaces": {
+    "pranavj17": {
+      "source": {
+        "source": "github",
+        "repo": "Pranavj17/mcp-server-graylog"
+      }
+    },
+    "claude-community": {
+      "source": {
+        "source": "github",
+        "repo": "anthropics/claude-plugins-community"
+      }
+    }
+  },
+  "skipDangerousModePermissionPrompt": true,
+  "theme": "dark",
+  "autoCompactEnabled": true,
+  "agentPushNotifEnabled": true
+}
