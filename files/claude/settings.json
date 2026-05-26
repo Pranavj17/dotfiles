@@ -5,7 +5,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun run /Users/pranav.j/.claude/plugins/cache/claude-community/claude-bot/0.1.0/bin/recall-hook.ts"
+            "command": "/Users/pranav.j/.nix-profile/bin/bun run /Users/pranav.j/.claude/plugins/cache/claude-community/claude-bot/0.1.0/bin/recall-hook.ts"
           }
         ]
       }
@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun run /Users/pranav.j/.claude/plugins/cache/claude-community/claude-bot/0.1.0/bin/collect-hook.ts"
+            "command": "/Users/pranav.j/.nix-profile/bin/bun run /Users/pranav.j/.claude/plugins/cache/claude-community/claude-bot/0.1.0/bin/collect-hook.ts"
           }
         ]
       }
