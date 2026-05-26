@@ -55,12 +55,40 @@ Decision is locked: full mac scope, rolled out in three phases.
 ├── files/                 # literal source-of-truth files (Phase 1)
 │   ├── starship.toml
 │   ├── alacritty.toml
-│   ├── claude/            # statusline-command.sh, statusline/*, hooks/, settings.json
+│   ├── claude/            # settings.json, keybindings.json, statusline-command.sh, statusline/*, curated MEMORY.md + notes
+│   ├── claude-bot/        # CLAUDE.md (Echo's prompt), .mcp.json, memory/<curated>.md
 │   ├── shell-tests/       # secret.sh, run.sh
 │   └── bin/               # har-extract, claude-export-split, elixir-version-cached
 └── tests/
     └── smoke.sh           # post-switch verification
 ```
+
+### Claude configuration inventory (what counts as "dotfiles" for our setup)
+
+The Claude tooling is deeper than just `settings.json` — it's the bulk of the failure-mode-on-laptop-swap we're protecting against. Explicit in / out lists below; only `files/claude/` and `files/claude-bot/` carry these into the repo.
+
+**Tracked — `files/claude/`:**
+- `settings.json` — global Claude Code settings (hooks, enabled plugins, statusLine command, theme, autoCompact).
+- `keybindings.json` — Claude Code key bindings.
+- `statusline-command.sh` + `statusline/*.sh` — the renderer and helpers (`probe-mini`, `probe-import`, `probe-triage`, `gen-greeter`, `gen-slot`, `test.sh`).
+- `projects/-Users-pranav-j-Documents-memory/memory/MEMORY.md` + the curated `*.md` notes (e.g. `dev-env-nix-toolchain`, `secrets-keychain-preference`, `nested-claude-headless-sandbox`, `apps-repo-clean-build`, etc.). The auto-generated `auto-*.md` session dumps are **explicitly excluded** — they're activity logs, not config.
+
+**Tracked — `files/claude-bot/`:**
+- `CLAUDE.md` — Echo's instructions / identity.
+- `.mcp.json` — Echo's MCP server config.
+- `memory/` — the curated memory notes (e.g. `echo-personality.md`, `pranav-profile.md`, `pranav-claude-insights.md`, `alacritty-keybindings.md`, `nix-setup.md`, `scripbox-repositories.md`, `vpn-setup.md`, `secret-rotation-helpers.md`). Auto-rotated `auto-*.md` dumps are excluded.
+
+**Tracked elsewhere in the repo:**
+- `files/bin/` — `har-extract`, `claude-export-split`, `elixir-version-cached`.
+- `files/shell-tests/` — `secret.sh`, `run.sh`.
+- `system/launchd.nix` (Phase 2) — declares `com.claude-bot.daemon` (replaces the hand-managed `~/Library/LaunchAgents/` plist).
+
+**Explicitly NOT tracked (caches, state, transcripts):**
+- `~/.claude/plugins/` (~163 MB plugin cache), `~/.claude/projects/*.jsonl` (session transcripts, ~86 MB), `~/.claude/{cache,image-cache,paste-cache,file-history,session-env,sessions,shell-snapshots,tasks,telemetry,usage-data,backups,chrome}/`, `~/.claude/{history.jsonl,.last-cleanup,mcp-needs-auth-cache.json}`.
+- `~/.claude-bot/{logs,processes,crons,.remember}/`, `~/.claude-bot/{daemon.pid,session-id}`.
+- All `auto-*.md` files under both `memory/` directories — these regenerate on every session.
+
+A `files/claude/.gitignore` (and `files/claude-bot/.gitignore`) enforces the exclusions with explicit patterns (`auto-*.md`, `*.jsonl`, `plugins/`, etc.) so the repo can't accumulate caches by accident.
 
 ### Phase 1 — Bootstrap (single evening; backup-achieved)
 
