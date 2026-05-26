@@ -47,7 +47,7 @@ Decision is locked: full mac scope, rolled out in three phases.
 │   └── packages.nix       # system pkgs
 ├── home/                  # home-manager (user-level)     — Phase 1 onwards
 │   ├── default.nix        # homeConfigurations.<user>
-│   ├── packages.nix       # user pkgs (jq, bun, ripgrep, gh, kubectx, kubelogin, sshpass…)
+│   ├── packages.nix       # user pkgs (jq, bun, ripgrep, gh, bat, kubectx, kubelogin, sshpass, starship…)
 │   ├── shell.nix          # programs.zsh.* — Phase 1: initExtra from out-of-store; Phase 3: native
 │   ├── starship.nix       # Phase 1: symlink; Phase 3: programs.starship.settings
 │   ├── alacritty.nix      # Phase 1: symlink (kept symlinked even at Phase 3 — TOML escape-sensitivity)
