@@ -16,6 +16,9 @@ for s in har-extract claude-export-split elixir-version-cached; do
   [ -L "$HOME/.local/bin/$s" ] && [ -x "$HOME/.local/bin/$s" ] && ok "$s symlink+exec" || bad "$s symlink+exec"
 done
 
+echo "== shelltest (statusline + secret helper) =="
+bash "$HOME/.config/shell-tests/run.sh" >/dev/null && ok "shelltest 28/28" || bad "shelltest 28/28"
+
 echo
 [ "$fail" -eq 0 ] && echo "✅ smoke PASSED" || echo "❌ smoke FAILED"
 exit "$fail"
