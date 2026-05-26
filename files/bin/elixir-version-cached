@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# elixir-version-cached — print the Elixir version (just the number), memoised
+# on disk to skip the ~420 ms BEAM cold-start that `elixir --version` would
+# otherwise cost on every prompt redraw.
+#
+# Cache key = sha1(binary path + binary mtime). Auto-invalidates when Nix (or
+# any toolchain switch) hands you a different elixir binary, since the store
+# path and/or mtime change.
+#
+#   First call in a new derivation : ~420 ms (one real elixir --version)
+#   Every call after               : ~5 ms (just `cat`)
+set -u
+bin=$(command -v elixir 2>/dev/null) || exit 0
+mt=$(stat -c %Y "$bin" 2>/dev/null || stat -f %m "$bin" 2>/dev/null || echo 0)
+key=$(printf '%s\n%s' "$bin" "$mt" | shasum | awk '{print $1}')
+cache="$HOME/.cache/elixir-version"
+f="$cache/$key"
+if [ ! -f "$f" ]; then
+  mkdir -p "$cache"
+  ver=$("$bin" --version 2>/dev/null | awk '/^Elixir/{print $2; exit}')
+  [ -z "$ver" ] && exit 0
+  printf '%s' "$ver" > "$f"
+fi
+cat "$f"

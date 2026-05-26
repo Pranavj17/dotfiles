@@ -1,0 +1,99 @@
+#!/usr/bin/env python3
+"""
+claude-export-split — split a claude.ai data export into per-conversation JSONL
+files. Line 1 of each file = conversation header (uuid, name, dates, summary,
+account); lines 2..N+1 = one message per line. Mirrors the Claude Code session
+transcript shape, so the same jq/grep/head/tail tooling works for both.
+
+Usage:
+    claude-export-split <export_dir> [outdir]
+
+<export_dir> must contain conversations.json (the file Anthropic ships in your
+data export). Outdir defaults to ~/Documents/claude-export/.
+
+Writes:
+    <outdir>/conversations/<date>_<slug>_<uuid8>.jsonl
+
+Idempotent: pre-existing .json/.jsonl per-conv files in <outdir>/conversations/
+are removed first to keep the directory clean. The source export is read-only.
+"""
+import sys, os, json, re
+
+
+def slug(s: str) -> str:
+    s = (s or "untitled").strip().lower() or "untitled"
+    s = re.sub(r"[^a-z0-9]+", "-", s).strip("-")[:50] or "untitled"
+    return s
+
+
+def main() -> None:
+    if len(sys.argv) < 2:
+        print("usage: claude-export-split <export_dir> [outdir]", file=sys.stderr)
+        sys.exit(1)
+    src_dir = sys.argv[1]
+    out_dir = os.path.expanduser(sys.argv[2] if len(sys.argv) > 2 else "~/Documents/claude-export")
+    src = os.path.join(src_dir, "conversations.json")
+    if not os.path.isfile(src):
+        print(f"error: {src} not found", file=sys.stderr)
+        sys.exit(1)
+
+    out_convs = os.path.join(out_dir, "conversations")
+    os.makedirs(out_convs, exist_ok=True)
+
+    # wipe stale per-conv files so the directory is exactly the new output
+    removed = 0
+    for f in os.listdir(out_convs):
+        if f.endswith(".json") or f.endswith(".jsonl"):
+            os.remove(os.path.join(out_convs, f))
+            removed += 1
+
+    convs = json.load(open(src))
+    written = 0
+    total_msgs = 0
+    for c in convs:
+        date = (c.get("created_at") or "")[:10] or "0000-00-00"
+        nm = slug(c.get("name") or "")
+        uid = (c.get("uuid") or "x")[:8]
+        path = os.path.join(out_convs, f"{date}_{nm}_{uid}.jsonl")
+
+        msgs = c.get("chat_messages") or []
+        header = {k: v for k, v in c.items() if k != "chat_messages"}
+        header["type"] = "conversation"
+
+        with open(path, "w") as fh:
+            fh.write(json.dumps(header, separators=(",", ":")) + "\n")
+            for m in msgs:
+                rec = {"type": "message", **m}
+                fh.write(json.dumps(rec, separators=(",", ":")) + "\n")
+
+        written += 1
+        total_msgs += len(msgs)
+
+    # verify: each file's first line is a conversation header
+    bad = []
+    for f in sorted(os.listdir(out_convs)):
+        p = os.path.join(out_convs, f)
+        with open(p) as fh:
+            lines = [l for l in fh if l.strip()]
+        if not lines:
+            bad.append((f, "empty")); continue
+        try:
+            h = json.loads(lines[0])
+            if h.get("type") != "conversation":
+                bad.append((f, "line 1 missing type=conversation"))
+        except Exception as e:
+            bad.append((f, f"line 1 parse error: {e}"))
+
+    print(f"split:       {written} conversations -> {out_convs}/")
+    print(f"messages:    {total_msgs} total")
+    print(f"cleaned up:  {removed} pre-existing files")
+    if bad:
+        print(f"VERIFY FAILED: {len(bad)} bad files")
+        for f, reason in bad[:10]:
+            print(f"  {f}: {reason}")
+        sys.exit(1)
+    print("verified: all files have a conversation header on line 1")
+
+
+if __name__ == "__main__":
+    main()

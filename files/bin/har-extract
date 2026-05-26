@@ -1,0 +1,156 @@
+#!/usr/bin/env python3
+"""har-extract — pull screenshots + prompt/response text from a HAR.
+
+Built for Claude-in-Chrome HARs ("Save all as HAR with content"), but works on
+any HAR. Reads request/response BODIES only — never headers — so your auth token
+is NOT written to disk.
+
+Usage:
+    har-extract <file.har> [outdir]
+
+Output (outdir defaults to <file>_extracted/):
+    NNN/img_KK.png     screenshots / image parts from the request body
+    NNN/system.txt     system prompt (if present)
+    NNN/prompt.txt     user/message text
+    NNN/response.txt   assistant text (JSON or SSE stream; may be empty if the
+                       browser didn't capture the streamed body)
+    index.txt          one line per entry
+"""
+import sys, os, json, base64, re
+
+
+def b64(s):
+    try:
+        return base64.b64decode(s, validate=False)
+    except Exception:
+        return None
+
+
+def walk_images(obj, out):
+    """Recursively collect (media_type, base64) image parts from parsed JSON."""
+    if isinstance(obj, dict):
+        src = obj.get("source")
+        if isinstance(src, dict) and src.get("type") == "base64" and isinstance(src.get("data"), str):
+            out.append((src.get("media_type", "image/png"), src["data"]))
+        for v in obj.values():
+            walk_images(v, out)
+    elif isinstance(obj, list):
+        for v in obj:
+            walk_images(v, out)
+
+
+def text_of(content):
+    """content can be a string or a list of parts."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return "\n".join(
+            p["text"] for p in content
+            if isinstance(p, dict) and isinstance(p.get("text"), str)
+        )
+    return ""
+
+
+def parse_request(text):
+    images, system, parts = [], "", []
+    try:
+        body = json.loads(text)
+    except Exception:
+        for m in re.finditer(r'data:(image/\w+);base64,([A-Za-z0-9+/=]+)', text):
+            images.append((m.group(1), m.group(2)))
+        return system, "", images
+    walk_images(body, images)
+    system = text_of(body.get("system", ""))
+    for msg in body.get("messages", []) or []:
+        t = text_of(msg.get("content"))
+        if t.strip():
+            parts.append(f"[{msg.get('role', '?')}] {t}")
+    return system, "\n\n".join(parts), images
+
+
+def parse_response(text, mime):
+    if not text:
+        return ""
+    is_sse = "event-stream" in (mime or "") or text.startswith("data:") or "\ndata:" in text
+    if is_sse:
+        chunks = []
+        for line in text.splitlines():
+            line = line.strip()
+            if not line.startswith("data:"):
+                continue
+            payload = line[5:].strip()
+            if payload in ("", "[DONE]"):
+                continue
+            try:
+                ev = json.loads(payload)
+            except Exception:
+                continue
+            d = ev.get("delta") or {}
+            if d.get("type") == "text_delta" and isinstance(d.get("text"), str):
+                chunks.append(d["text"])
+        if chunks:
+            return "".join(chunks)
+    try:
+        body = json.loads(text)
+        if isinstance(body.get("content"), list):
+            return text_of(body["content"])
+    except Exception:
+        pass
+    return ""
+
+
+def main():
+    if len(sys.argv) < 2:
+        print("usage: har-extract <file.har> [outdir]", file=sys.stderr)
+        sys.exit(1)
+    har_path = sys.argv[1]
+    outdir = sys.argv[2] if len(sys.argv) > 2 else os.path.splitext(har_path)[0] + "_extracted"
+    with open(har_path, "r", encoding="utf-8", errors="ignore") as f:
+        har = json.load(f)
+    entries = har.get("log", {}).get("entries", [])
+    os.makedirs(outdir, exist_ok=True)
+
+    n_entries = n_imgs = 0
+    index = []
+    for e in entries:
+        req, resp = e.get("request", {}), e.get("response", {})
+        url = req.get("url", "")
+        post = (req.get("postData") or {}).get("text", "")
+        rc = resp.get("content") or {}
+        rtext = rc.get("text", "")
+        if rc.get("encoding") == "base64" and rtext:
+            dec = b64(rtext)
+            rtext = dec.decode("utf-8", "ignore") if dec else ""
+        system, user, images = parse_request(post) if post else ("", "", [])
+        assistant = parse_response(rtext, rc.get("mimeType", ""))
+        if not (images or user or assistant):
+            continue
+        n_entries += 1
+        sub = os.path.join(outdir, f"{n_entries:03d}")
+        os.makedirs(sub, exist_ok=True)
+        for k, (mt, data) in enumerate(images, 1):
+            raw = b64(data)
+            if raw is None:
+                continue
+            ext = {"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp"}.get(mt, "png")
+            with open(os.path.join(sub, f"img_{k:02d}.{ext}"), "wb") as fh:
+                fh.write(raw)
+            n_imgs += 1
+        for name, val in (("system", system), ("prompt", user), ("response", assistant)):
+            if val:
+                with open(os.path.join(sub, f"{name}.txt"), "w") as fh:
+                    fh.write(val)
+        index.append(f"{n_entries:03d}  imgs={len(images)} prompt={'Y' if user else '-'} "
+                     f"resp={'Y' if assistant else '-'}  {url[:90]}")
+
+    with open(os.path.join(outdir, "index.txt"), "w") as fh:
+        fh.write("\n".join(index) + "\n")
+    print(f"entries with content : {n_entries}")
+    print(f"images extracted     : {n_imgs}")
+    print(f"output               : {outdir}")
+    print("note: bodies only — no auth headers written. SSE responses may be empty "
+          "if the browser didn't capture the streamed body.")
+
+
+if __name__ == "__main__":
+    main()

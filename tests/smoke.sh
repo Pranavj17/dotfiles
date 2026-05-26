@@ -11,6 +11,11 @@ echo "== flake check =="
 
 # More blocks appended in later tasks (shelltest, starship prompt, har-extract, etc.)
 
+echo "== ~/.local/bin scripts =="
+for s in har-extract claude-export-split elixir-version-cached; do
+  [ -L "$HOME/.local/bin/$s" ] && [ -x "$HOME/.local/bin/$s" ] && ok "$s symlink+exec" || bad "$s symlink+exec"
+done
+
 echo
 [ "$fail" -eq 0 ] && echo "✅ smoke PASSED" || echo "❌ smoke FAILED"
 exit "$fail"
