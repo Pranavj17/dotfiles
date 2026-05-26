@@ -1,3 +1,5 @@
 { pkgs, ... }: {
-  home.packages = [ ];
+  home.packages = [
+    pkgs.bat
+  ];
 }
