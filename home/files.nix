@@ -40,6 +40,5 @@
     ".claude-bot/memory/vpn-setup.md".source              = ../files/claude-bot/memory/vpn-setup.md;
     ".claude-bot/memory/secret-rotation-helpers.md".source = ../files/claude-bot/memory/secret-rotation-helpers.md;
 
-    ".zshrc".source = ../files/zshrc;
   };
 }

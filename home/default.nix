@@ -1,5 +1,5 @@
 { pkgs, ... }: {
-  imports = [ ./files.nix ./packages.nix ./starship.nix ];
+  imports = [ ./files.nix ./packages.nix ./starship.nix ./shell.nix ];
 
   home.username      = "pranav.j";
   home.homeDirectory = "/Users/pranav.j";
