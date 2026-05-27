@@ -12,6 +12,8 @@
 - [Nested claude -p sandbox](nested-claude-headless-sandbox.md) — scripts calling `claude -p` must use `--strict-mcp-config` from a neutral dir, else "Prompt is too long" (261k MCP tools) + fires project hooks
 - [Secrets via Keychain](secrets-keychain-preference.md) — prefers macOS login Keychain (`security` add/find-generic-password), fetched on-demand in .zshrc; never ciphertext+key in a dotfile
 - [Advisory FP title-merge bug](advisory-fp-title-merge-bug.md) — FP summary merged possibility/new by goal title; duplicate titles → wrong per-goal numbers; possibility reorders by priority + id tracks goal; FIXED via correlation-id match in financial_plan.ex
+- [Advisory canary framework](advisory-canary-framework.md) — Advisory.Canary behaviour + Engine/Canonicalizer/Scheduler/Watermark in advisory; FP payload-diff is first consumer; new canary = ~80 LOC @behaviour + 1 config line; all events Logger.info, filter by event-name in Graylog
+- [Scripbox Elixir style](scripbox-elixir-style.md) — Ecto over raw SQL, no try/rescue (let-it-crash), Logger.info for canaries, defdelegate for 1:1 forwarders, why-not-what comments, drop dead test seams
 - [Scripbox k8s deploy](scripbox-k8s-deploy.md) — k8s-apps repo + nocodb kustomize precedent; kubectl auth=Google OIDC/kubelogin (NOT AWS SSO); .net=internal/.com=public+cloudflare; chamber/SSM secrets; ECR via GitLab CI
 - [Helixa project](helixa-project.md) — RM Customer360/briefing FastAPI (~/Documents/helixa), Zoho-iframe-embedded, ClickHouse; Mac Mini→k8s (helixa.scripbox.com) migration; chat via claude -p
 - [Advisory Peach Argus arity bug](advisory-peach-portfolio-argus-arity.md) — pre-existing: peach/portfolio.ex calls Advisory.Argus.user_graph/2 but only /1 exists → UndefinedFunctionError + failing test; fallout from FP-era Argus /2→/1 refactor
@@ -19,3 +21,7 @@
 - [minibot Mac mini](minibot-mac-mini.md) — minibot@10.10.30.4 (SB-312.local), M4 Pro arm64, keyless SSH via id_ed25519; Ollama text LLMs only, NO image-gen software, NO NVIDIA hardware
 - [dotfiles repo](dotfiles-repo.md) — ~/dotfiles HM + nix-darwin flake; `make switch` runs both layers; remote Pranavj17/dotfiles tagged phase-1/2/3; brew bundle declared (14 formulas + 5 casks)
 - [brew bundle cleanup=uninstall pitfall](brew-bundle-cleanup-uninstall-pitfall.md) — nix-darwin `homebrew.onActivation.cleanup="uninstall"` wipes EVERY undeclared brew formula/cask. Default to "none" until declared list is exhaustive
+- [Home VPN Pi (Batman) shipped](home-vpn-batman-built.md) — Pi 5 home gateway live 2026-05-28 at ~/Documents/home-automation: Tailscale subnet router + exit node, AdGuard tailnet-only DNS, age-encrypted backups to Mac, ntfy monitoring
+- [k8s-apps RBAC auto-ns-create MR !1036](k8s-apps-rbac-auto-ns-create-mr1036.md) — rbac-user-manager.sh now auto-creates missing namespaces before applying RoleBindings; **revert if security concern found**
+- [Helixa prod nexus stopgap](helixa-prod-nexus-stopgap.md) — helixa.scripbox.com live in prod cluster's `nexus` namespace; deploy via `~/Documents/helixa/scripts/deploy-prod-via-nexus.sh`; cluster-admin can graduate to proper helixa ns
+- [Brainstorm → subagent default](feedback-brainstorm-subagent-default.md) — after brainstorming + writing-plans, skip the "subagent vs inline" prompt and go straight to subagent-driven execution
