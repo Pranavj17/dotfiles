@@ -52,6 +52,11 @@ export GRAYLOG_API_TOKEN="$(secret get GRAYLOG_API_TOKEN 2>/dev/null)"
 # Rotate at build.nvidia.com → `secret set NVIDIA_API_KEY <new>`.
 export NVIDIA_API_KEY="$(secret get NVIDIA_API_KEY 2>/dev/null)"
 
+# Tailscale API — used by scripts hitting the Tailscale REST API (machine list,
+# auth-key minting, ACL push, etc.). Key in Keychain. Rotate at
+# https://login.tailscale.com/admin/settings/keys → `secret set TAILSCALE_API_KEY <new>`.
+export TAILSCALE_API_KEY="$(secret get TAILSCALE_API_KEY 2>/dev/null)"
+
 # ── Metabase (credentials in macOS Keychain — NOT plaintext) ────────────────
 # The password lives in the login Keychain, encrypted by macOS. To rotate it:
 #   security add-generic-password -a "$METABASE_USER" -s scripbox-metabase -w '<new-pw>' -U
