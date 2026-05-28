@@ -25,3 +25,4 @@
 - [k8s-apps RBAC auto-ns-create MR !1036](k8s-apps-rbac-auto-ns-create-mr1036.md) — rbac-user-manager.sh now auto-creates missing namespaces before applying RoleBindings; **revert if security concern found**
 - [Helixa prod nexus stopgap](helixa-prod-nexus-stopgap.md) — helixa.scripbox.com live in prod cluster's `nexus` namespace; deploy via `~/Documents/helixa/scripts/deploy-prod-via-nexus.sh`; cluster-admin can graduate to proper helixa ns
 - [Brainstorm → subagent default](feedback-brainstorm-subagent-default.md) — after brainstorming + writing-plans, skip the "subagent vs inline" prompt and go straight to subagent-driven execution
+- [Downloads via curl, not browser](feedback-downloads-via-curl.md) — for any file ≥10MB, kick off `curl -L -o ... &` in background instead of pointing operator at a browser link; avoids architecture-mismatch and click friction
