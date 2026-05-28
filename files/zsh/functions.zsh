@@ -19,6 +19,30 @@ alias memory='cd /Users/pranav.j/Documents/memory && claude --dangerously-skip-p
 # `r-vpn` — connect/disconnect the DevOps SSL VPN via Tunnelblick. Usage: r-vpn [up|down|status]
 alias r-vpn='~/.vpn_connect'
 
+# `kali` — drop into the Kali Rolling container on Colima (ARM64 native).
+# Container baked from kali:tools image with top10 pentest metapackage + NET_RAW cap.
+# Persistent workspace mounted at /work from ~/Documents/kali-work.
+# Usage:
+#   kali                    # bash shell in container
+#   kali nmap scanme.nmap.org
+#   kali tmux a -t lab      # resume tmux inside
+#   docker stop kali        # pause (saves CPU/RAM)
+#   docker rm kali && kali  # nuke + recreate from image (recreates container, image is immutable)
+kali() {
+  if ! docker ps --filter "name=^/kali$" --format '{{.Names}}' | grep -q '^kali$'; then
+    if docker ps -a --filter "name=^/kali$" --format '{{.Names}}' | grep -q '^kali$'; then
+      docker start kali >/dev/null
+    else
+      docker run -d --name kali --hostname kali \
+        --cap-add NET_RAW --cap-add NET_ADMIN \
+        -v "$HOME/Documents/kali-work:/work" -w /work \
+        --restart unless-stopped \
+        kali:tools sleep infinity >/dev/null
+    fi
+  fi
+  docker exec -it kali "${@:-bash}"
+}
+
 # ── secret — universal macOS Keychain helper (keeps secrets out of dotfiles) ──
 # Secrets live in the login Keychain (encrypted by macOS), fetched on demand.
 #   secret set <name> [value]   # value prompted (hidden) if omitted; -U updates/rotates
