@@ -1,5 +1,15 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/pranav.j/.claude/hooks/helixa-session-greeting.sh"
+          }
+        ]
+      }
+    ],
     "UserPromptSubmit": [
       {
         "hooks": [
@@ -29,14 +39,16 @@
   "enabledPlugins": {
     "frontend-design@claude-plugins-official": true,
     "superpowers@claude-plugins-official": true,
-    "github@claude-plugins-official": true,
     "playwright@claude-plugins-official": true,
     "code-review@claude-plugins-official": true,
     "context7@claude-plugins-official": true,
     "slack@claude-plugins-official": true,
     "graylog-log-search@pranavj17": true,
     "remember@claude-plugins-official": true,
-    "claude-bot@claude-community": true
+    "claude-bot@claude-community": true,
+    "agent-smith@claude-community": true,
+    "ralph-loop@claude-plugins-official": true,
+    "clickhouse@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "pranavj17": {
@@ -52,9 +64,15 @@
       }
     }
   },
+  "effortLevel": "high",
+  "voice": {
+    "enabled": true,
+    "mode": "hold"
+  },
   "skipDangerousModePermissionPrompt": true,
   "theme": "dark",
   "autoCompactEnabled": true,
   "agentPushNotifEnabled": true,
+  "voiceEnabled": true,
   "autoUpdate": false
 }
