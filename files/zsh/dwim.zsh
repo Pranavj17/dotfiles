@@ -166,11 +166,16 @@ _dwim_at_accept() {
   zle _dwim_orig_accept_line
 }
 
-# Idempotent: if our widget is already installed (re-sourced shell), do
-# nothing — re-capturing would alias _dwim_orig_accept_line onto our own
-# wrapper and infinite-loop on Enter.
-if [[ "${widgets[accept-line]}" != user:_dwim_at_accept ]]; then
+# Idempotent via a one-time install flag — NOT a widgets[accept-line] identity
+# check. A neighbor plugin (e.g. zsh-syntax-highlighting) may legitimately wrap
+# accept-line on top of ours between sources, so accept-line won't point at
+# _dwim_at_accept even though we're already installed. Re-capturing in that
+# case would alias _dwim_orig_accept_line onto the neighbor's wrapper, which
+# itself delegates back through us — a 2-hop cycle that infinite-loops on
+# Enter. The flag decouples "have we installed" from "what's on top now".
+if [[ -z "$_DWIM_ACCEPT_INSTALLED" ]]; then
   zle -A accept-line _dwim_orig_accept_line
   zle -N accept-line _dwim_at_accept
+  typeset -g _DWIM_ACCEPT_INSTALLED=1
 fi
 
