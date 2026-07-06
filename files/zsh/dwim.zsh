@@ -157,8 +157,92 @@ _dwim_run_action() {
             --preview='printf "%s" {2}' \
             --preview-window='down,3,wrap,border-top' \
             --header 'pick what to do · Enter loads the command · Esc cancels')"
-  [[ -n "$pick" ]] && _dwim_load "${pick##*$'\t'}"
+  [[ -n "$pick" ]] && _dwim_execute_loop "${pick##*$'\t'}"
 }
+
+# Render captured output as a bordered panel with a status line.
+_dwim_panel() {
+  local cmd="$1" body="$2" exit_code="$3"
+  print -Pr -- "%F{240}┌ ${cmd} %f"
+  [[ -n "$body" ]] && print -r -- "${body}" | sed 's/^/  /'
+  if [[ "$exit_code" == 0 ]]; then
+    print -Pr -- "%F{240}└%f %F{34}✓ ${exit_code}%f"
+  else
+    print -Pr -- "%F{240}└%f %F{196}✗ ${exit_code}%f"
+  fi
+}
+
+# Ask before running a mutating command. Returns 0 (run) / 1 (skip).
+_dwim_confirm() {
+  local cmd="$1" key
+  print -u2 -Pn "%F{214}⚠ run:%f ${cmd}  %F{240}[Enter runs · Esc skips]%f "
+  read -k key
+  print -u2 ""
+  [[ "$key" == $'\n' || "$key" == $'\r' ]]
+}
+
+# Drive run → observe → repair for a single starting command.
+_dwim_execute_loop() {
+  local cmd="$1" steps=0
+  local -a history_json
+  while (( steps < 5 )); do
+    (( steps++ ))
+    local info; info="$(dwim-engine --run "$cmd")"
+    local interactive read_only ran exit_code stdout stderr
+    interactive="$(print -r -- "$info" | _dwim_json interactive)"
+    read_only="$(print -r -- "$info" | _dwim_json read_only)"
+    ran="$(print -r -- "$info" | _dwim_json ran)"
+    exit_code="$(print -r -- "$info" | _dwim_json exit)"
+    stdout="$(print -r -- "$info" | _dwim_json stdout)"
+    stderr="$(print -r -- "$info" | _dwim_json stderr)"
+
+    # Present interactive tool → hand full-screen to your shell (you Enter).
+    # (A MISSING interactive tool comes back exit 127 and falls through to repair.)
+    if [[ "$interactive" == "true" && "$exit_code" != "127" ]]; then
+      _dwim_load "$cmd"
+      return 0
+    fi
+    # Mutating command not yet run → confirm, then force-run and re-read result.
+    if [[ "$interactive" != "true" && "$ran" != "true" ]]; then
+      _dwim_confirm "$cmd" || { print -u2 -Pr -- "%F{240}· skipped%f"; return 1 }
+      info="$(dwim-engine --run "$cmd" --force)"
+      exit_code="$(print -r -- "$info" | _dwim_json exit)"
+      stdout="$(print -r -- "$info" | _dwim_json stdout)"
+      stderr="$(print -r -- "$info" | _dwim_json stderr)"
+    fi
+
+    _dwim_panel "$cmd" "${stdout:-$stderr}" "$exit_code"
+    [[ "$exit_code" == 0 ]] && return 0
+
+    # Failure → repair (deterministic install / Claude), pick, loop.
+    history_json+=("{\"cmd\":$(_dwim_jstr "$cmd"),\"exit\":${exit_code:-1},\"stdout\":$(_dwim_jstr "$stdout"),\"stderr\":$(_dwim_jstr "$stderr")}")
+    local cands
+    cands="$(print -r -- "[${(j:,:)history_json}]" | dwim-engine --repair)"
+    [[ -z "$cands" ]] && { print -u2 -Pr -- "%F{240}· no fix found%f"; return 1 }
+    local pick
+    pick="$(printf '%s\n' "$cands" | fzf --height '~40%' --reverse --border \
+              --delimiter='\t' --with-nth=1 --select-1 --exit-0 \
+              --prompt 'fix › ' --pointer '▶' \
+              --preview='printf "%s" {2}' --preview-window='down,3,wrap,border-top' \
+              --header 'apply a fix · Enter runs · Esc stops')"
+    [[ -z "$pick" ]] && return 1
+    cmd="${pick##*$'\t'}"
+  done
+  print -u2 -Pr -- "%F{240}· gave up after 5 steps%f"
+  return 1
+}
+
+# Tiny JSON field readers (avoid a jq dependency; values are simple).
+_dwim_json() { "${DWIM_PYTHON:-$HOME/.venvs/dwim/bin/python}" -c '
+import sys, json
+key = sys.argv[1]
+try: v = json.load(sys.stdin).get(key, "")
+except Exception: v = ""
+if v is None: v = ""
+elif isinstance(v, bool): v = "true" if v else "false"
+print(v)' "$1" }
+_dwim_jstr() { "${DWIM_PYTHON:-$HOME/.venvs/dwim/bin/python}" -c '
+import sys, json; print(json.dumps(sys.argv[1]))' "$1" }
 
 # accept-line wrapper: a line starting with '@' is an agent intent, not a
 # command. Delegates to whatever accept-line is currently installed (builtin
