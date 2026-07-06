@@ -15,10 +15,29 @@ _dwim_preexec() {
 _dwim_precmd() {
   local code=$?
   [[ -z "$_DWIM_LAST_CMD" ]] && return
-  mkdir -p "${_DWIM_STATE:h}"
-  print -r -- "$code"           >  "$_DWIM_STATE"
-  print -r -- "$_DWIM_LAST_CMD" >> "$_DWIM_STATE"
+  local cmd="$_DWIM_LAST_CMD"
   _DWIM_LAST_CMD=""
+  mkdir -p "${_DWIM_STATE:h}"
+  print -r -- "$code" >  "$_DWIM_STATE"
+  print -r -- "$cmd"  >> "$_DWIM_STATE"
+
+  # Autonomous mode: on command-not-found (127), auto-suggest a correction via
+  # the warm daemon and load it onto the prompt. `print -z` works here (precmd),
+  # unlike in command_not_found_handler. Manual `dwim` still handles other codes.
+  [[ "$code" == 127 ]] || return
+  local errdest=/dev/null
+  [[ -n "$DWIM_DEBUG" ]] && errdest=/tmp/dwim.log
+  local fix
+  fix="$(dwim-engine --cmd "$cmd" --exit 127 --daemon-only 2>>"$errdest")"
+  local rc=$?
+  if (( rc == 0 )) && [[ -n "$fix" && "$fix" != "$cmd" ]]; then
+    print -u2 "dwim 🔮 $fix"
+    _dwim_load "$fix"
+  elif (( rc == 4 )) && [[ -n "${commands[dwim-daemon]}" ]]; then
+    # Daemon not up yet — warm it in the background for next time.
+    (nohup dwim-daemon >/tmp/dwim-daemon.log 2>&1 &)
+    print -u2 "dwim: warming corrector in background — kicks in shortly"
+  fi
 }
 
 autoload -Uz add-zsh-hook
@@ -34,6 +53,10 @@ _dwim_load() { print -z -- "$1" }
 _dwim_dbg() { [[ -n "$DWIM_DEBUG" ]] && print -r -- "[dwim] $*" >> /tmp/dwim.log }
 
 dwim() {
+  if [[ "$1" == "status" ]]; then
+    dwim-engine --status
+    return $?
+  fi
   _dwim_dbg "--- dwim invoked; state=$_DWIM_STATE"
   if [[ ! -f "$_DWIM_STATE" ]]; then
     _dwim_dbg "no state file"
@@ -65,3 +88,4 @@ dwim() {
   _dwim_dbg "loading onto buffer via print -z"
   _dwim_load "$suggestion"
 }
+
