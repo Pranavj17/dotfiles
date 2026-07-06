@@ -53,10 +53,31 @@ _dwim_load() { print -z -- "$1" }
 _dwim_dbg() { [[ -n "$DWIM_DEBUG" ]] && print -r -- "[dwim] $*" >> /tmp/dwim.log }
 
 dwim() {
-  if [[ "$1" == "status" ]]; then
-    dwim-engine --status
-    return $?
-  fi
+  case "$1" in
+    help|-h|--help)
+      print -r -- "dwim — local-LLM shell command corrector
+
+USAGE
+  dwim              correct the last failed command; loads the fix onto your
+                    prompt (press Enter to run). Auto-fires on command-not-found.
+  dwim status       show the active model, daemon state, and device
+  dwim help         show this help
+
+HOW IT WORKS
+  A typo'd command (command not found) auto-suggests a fix via a warm local
+  MLX model — no typing needed. For commands that ran but failed (bad flags,
+  exit != 0), run 'dwim' yourself to get a correction.
+
+CONFIG
+  ~/.config/dwim/config.toml   set 'model = \"...\"' to change the model
+  DWIM_DEBUG=1                 trace to /tmp/dwim.log"
+      return 0
+      ;;
+    status)
+      dwim-engine --status
+      return $?
+      ;;
+  esac
   _dwim_dbg "--- dwim invoked; state=$_DWIM_STATE"
   if [[ ! -f "$_DWIM_STATE" ]]; then
     _dwim_dbg "no state file"
