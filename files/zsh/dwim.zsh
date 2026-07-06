@@ -141,15 +141,11 @@ bindkey '^I' _dwim_tab_widget      # Tab accepts the armed fix (or completes)
 _dwim_run_action() {
   local intent="$1"
   [[ -z "$intent" ]] && return 1
-  # Capture the agent's answer (dwim-action stderr) instead of letting it stream
-  # live onto the prompt line — printing it live is what glued it to the spinner.
-  local errfile; errfile="$(mktemp)"
-  print -u2 ""                                       # fresh line below the committed @ command
-  print -u2 -Pn "%F{244}⋯ dwim is thinking…%f"       # transient spinner (no newline)
-  local out; out="$(dwim-action "$intent" 2>"$errfile")"
-  print -u2 -n "\r\033[2K"                            # wipe the spinner line (cursor is on it)
-  local answer; answer="$(<"$errfile")"; rm -f "$errfile"
-  [[ -n "$answer" ]] && print -u2 -Pr -- "%F{110}✦%f %F{250}${answer}%f"
+  # dwim-action owns the live display: it streams the agent's tool calls (gray)
+  # and prints the answer to stderr, which flows straight to the terminal here.
+  # We only capture stdout — the tab-separated command candidates — for fzf.
+  print -u2 ""                                        # fresh line below the committed @ command
+  local out; out="$(dwim-action "$intent")"
   [[ -z "$out" ]] && { print -u2 -Pr -- "%F{244}· no command to suggest%f"; return 1 }
   # Each line is "<plain-English description>\t<command>". fzf shows the
   # description; the raw command is previewed below (so you see exactly what
