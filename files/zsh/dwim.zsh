@@ -7,6 +7,7 @@ typeset -g _DWIM_LAST_CMD=""
 typeset -g _DWIM_GHOST=""   # armed correction, shown as grey ghost text
 
 _dwim_preexec() {
+  _DWIM_GHOST=""   # any command running clears a pending suggestion
   case "$1" in
     dwim|dwim\ *) _DWIM_LAST_CMD="" ;;   # never try to fix dwim itself
     *)            _DWIM_LAST_CMD="$1" ;;
@@ -32,7 +33,9 @@ _dwim_precmd() {
   fix="$(dwim-engine --cmd "$cmd" --exit 127 --daemon-only 2>>"$errdest")"
   local rc=$?
   if (( rc == 0 )) && [[ -n "$fix" && "$fix" != "$cmd" ]]; then
-    _DWIM_GHOST="$fix"   # painted as grey ghost text on the next prompt (Tab/→ accepts)
+    _DWIM_GHOST="$fix"   # armed; Tab on the empty prompt fills it in
+    # Grey preview line above the prompt (reliable — doesn't fight autosuggestions).
+    print -Pr -- "%F{244}🔮 ${fix}%f  %F{240}· Tab to accept%f"
   elif (( rc == 4 )) && [[ -n "${commands[dwim-daemon]}" ]]; then
     # Daemon not up yet — warm it in the background for next time.
     (nohup dwim-daemon >/tmp/dwim-daemon.log 2>&1 &)
@@ -110,43 +113,20 @@ CONFIG
   _dwim_load "$suggestion"
 }
 
-# --- Grey ghost-text rendering (accept with Tab or →) -------------------------
-# Shows an armed correction ($_DWIM_GHOST) as grey text on an EMPTY prompt, the
-# way autosuggestions shows history hints. We only touch POSTDISPLAY when the
-# buffer is empty; autosuggestions only touches it when non-empty, so they never
-# collide. Uses add-zle-hook-widget (multi-hook API) so we don't clobber it.
-typeset -g DWIM_GHOST_STYLE="${DWIM_GHOST_STYLE:-fg=8}"   # 8 = bright-black (grey)
-
-_dwim_ghost_redraw() {
-  if [[ -n "$_DWIM_GHOST" && -z "$BUFFER" ]]; then
-    POSTDISPLAY="$_DWIM_GHOST"
-    region_highlight+=("0 ${#_DWIM_GHOST} ${DWIM_GHOST_STYLE}")
-  elif [[ -n "$_DWIM_GHOST" ]]; then
-    POSTDISPLAY=""            # user started typing — hand off to autosuggestions
-    _DWIM_GHOST=""
-  fi
-}
-
-_dwim_ghost_accept() {
-  BUFFER="$_DWIM_GHOST"
-  CURSOR=${#BUFFER}
-  POSTDISPLAY=""
-  _DWIM_GHOST=""
-}
-
-# Tab: accept the ghost if one is showing, else fall through to normal
-# completion. (Right-arrow stays owned by autosuggestions; the ghost only shows
-# on an empty buffer where autosuggestions is idle, so Tab avoids all conflict.)
+# --- Accept an armed suggestion with Tab -------------------------------------
+# The autonomous path prints a grey preview line and arms $_DWIM_GHOST. On the
+# (empty) prompt, Tab fills the correction into the buffer; otherwise Tab does
+# normal completion. (Inline POSTDISPLAY ghost fights zsh-autosuggestions, which
+# owns POSTDISPLAY — so we use a printed grey preview + Tab instead.)
 _dwim_tab_widget() {
   if [[ -n "$_DWIM_GHOST" && -z "$BUFFER" ]]; then
-    _dwim_ghost_accept
+    BUFFER="$_DWIM_GHOST"
+    CURSOR=${#BUFFER}
+    _DWIM_GHOST=""
   else
     zle expand-or-complete
   fi
 }
 zle -N _dwim_tab_widget
-
-autoload -Uz add-zle-hook-widget
-add-zle-hook-widget line-pre-redraw _dwim_ghost_redraw
-bindkey '^I' _dwim_tab_widget      # Tab accepts the ghost (or completes)
+bindkey '^I' _dwim_tab_widget      # Tab accepts the armed fix (or completes)
 
