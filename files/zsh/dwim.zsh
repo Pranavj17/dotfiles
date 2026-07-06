@@ -38,6 +38,11 @@ dwim() {
   local code cmd suggestion
   code="$(sed -n 1p "$_DWIM_STATE")"
   cmd="$(sed -n '2,$p' "$_DWIM_STATE")"
+  # Only worth loading the model when the last command actually failed.
+  if [[ "$code" == "0" ]]; then
+    print -u2 "dwim: last command succeeded — nothing to fix"
+    return 1
+  fi
   suggestion="$(dwim-engine --cmd "$cmd" --exit "$code")" || {
     print -u2 "dwim: no correction found"
     return 1
