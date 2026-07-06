@@ -30,26 +30,38 @@ precmd_functions=(_dwim_precmd ${precmd_functions:#_dwim_precmd})
 # Default buffer-load seam; overridden in tests.
 _dwim_load() { print -z -- "$1" }
 
+# Trace to /tmp/dwim.log when DWIM_DEBUG is set (export DWIM_DEBUG=1).
+_dwim_dbg() { [[ -n "$DWIM_DEBUG" ]] && print -r -- "[dwim] $*" >> /tmp/dwim.log }
+
 dwim() {
+  _dwim_dbg "--- dwim invoked; state=$_DWIM_STATE"
   if [[ ! -f "$_DWIM_STATE" ]]; then
+    _dwim_dbg "no state file"
     print -u2 "dwim: nothing to fix"
     return 1
   fi
   local code cmd suggestion
   code="$(sed -n 1p "$_DWIM_STATE")"
   cmd="$(sed -n '2,$p' "$_DWIM_STATE")"
+  _dwim_dbg "read state: code=[$code] cmd=[$cmd]"
   # Only worth loading the model when the last command actually failed.
   if [[ "$code" == "0" ]]; then
+    _dwim_dbg "exit 0 → skip"
     print -u2 "dwim: last command succeeded — nothing to fix"
     return 1
   fi
-  suggestion="$(dwim-engine --cmd "$cmd" --exit "$code")" || {
-    print -u2 "dwim: no correction found"
-    return 1
-  }
-  if [[ -z "$suggestion" ]]; then
+  # Keep the engine's stderr OFF the tty — MLX/Metal load writes control chars
+  # that corrupt the line editor, so `print -z` below wouldn't render.
+  local errdest=/dev/null
+  [[ -n "$DWIM_DEBUG" ]] && errdest=/tmp/dwim.log
+  suggestion="$(dwim-engine --cmd "$cmd" --exit "$code" 2>>"$errdest")"
+  local rc=$?
+  _dwim_dbg "engine rc=$rc suggestion=[$suggestion]"
+  if (( rc != 0 )) || [[ -z "$suggestion" ]]; then
+    _dwim_dbg "no suggestion → bail"
     print -u2 "dwim: no correction found"
     return 1
   fi
+  _dwim_dbg "loading onto buffer via print -z"
   _dwim_load "$suggestion"
 }
