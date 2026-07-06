@@ -141,14 +141,22 @@ bindkey '^I' _dwim_tab_widget      # Tab accepts the armed fix (or completes)
 _dwim_run_action() {
   local intent="$1"
   [[ -z "$intent" ]] && return 1
-  print -u2 -n "   ⋯ claude is investigating…"
-  local out
-  out="$(dwim-action "$intent")"   # answer→stderr (shown live), commands→stdout
-  print -u2 -n "\r\033[K"          # clear the spinner line
-  [[ -z "$out" ]] && { print -u2 "dwim: no command suggested"; return 1 }
+  # Capture the agent's answer (dwim-action stderr) instead of letting it stream
+  # live onto the prompt line — printing it live is what glued it to the spinner.
+  local errfile; errfile="$(mktemp)"
+  print -u2 ""                                       # fresh line below the committed @ command
+  print -u2 -Pn "%F{244}⋯ dwim is thinking…%f"       # transient spinner (no newline)
+  local out; out="$(dwim-action "$intent" 2>"$errfile")"
+  print -u2 -n "\r\033[2K"                            # wipe the spinner line (cursor is on it)
+  local answer; answer="$(<"$errfile")"; rm -f "$errfile"
+  [[ -n "$answer" ]] && print -u2 -Pr -- "%F{110}✦%f %F{250}${answer}%f"
+  [[ -z "$out" ]] && { print -u2 -Pr -- "%F{244}· no command to suggest%f"; return 1 }
+  # One command → auto-selected (--select-1); many → pick. Either way it only
+  # lands on the prompt buffer (Enter to run), never auto-executes.
   local pick
-  pick="$(printf '%s\n' "$out" | fzf --height 40% --reverse \
-            --prompt 'dwim@ ' --header 'pick a command · Esc cancels')"
+  pick="$(printf '%s\n' "$out" | fzf --height '~40%' --reverse --border --margin 0,0,0,2 \
+            --select-1 --exit-0 --prompt 'run › ' --pointer '▶' \
+            --header 'dwim@ · Enter loads onto prompt · Esc cancels')"
   [[ -n "$pick" ]] && _dwim_load "$pick"
 }
 
