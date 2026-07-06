@@ -151,13 +151,17 @@ _dwim_run_action() {
   local answer; answer="$(<"$errfile")"; rm -f "$errfile"
   [[ -n "$answer" ]] && print -u2 -Pr -- "%F{110}✦%f %F{250}${answer}%f"
   [[ -z "$out" ]] && { print -u2 -Pr -- "%F{244}· no command to suggest%f"; return 1 }
-  # One command → auto-selected (--select-1); many → pick. Either way it only
-  # lands on the prompt buffer (Enter to run), never auto-executes.
+  # Each line is "<plain-English description>\t<command>". fzf shows the
+  # description; the raw command is previewed below (so you see exactly what
+  # runs). Selecting loads the command onto the prompt — never auto-executes.
   local pick
-  pick="$(printf '%s\n' "$out" | fzf --height '~40%' --reverse --border --margin 0,0,0,2 \
-            --select-1 --exit-0 --prompt 'run › ' --pointer '▶' \
-            --header 'dwim@ · Enter loads onto prompt · Esc cancels')"
-  [[ -n "$pick" ]] && _dwim_load "$pick"
+  pick="$(printf '%s\n' "$out" | fzf --height '~45%' --reverse --border --margin 0,0,0,2 \
+            --delimiter='\t' --with-nth=1 \
+            --select-1 --exit-0 --prompt 'do › ' --pointer '▶' \
+            --preview='printf "%s" {2}' \
+            --preview-window='down,3,wrap,border-top' \
+            --header 'pick what to do · Enter loads the command · Esc cancels')"
+  [[ -n "$pick" ]] && _dwim_load "${pick##*$'\t'}"
 }
 
 # accept-line wrapper: a line starting with '@' is an agent intent, not a
