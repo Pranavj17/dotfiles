@@ -65,6 +65,7 @@ USAGE
   dwim              correct the last failed command; loads the fix onto your
                     prompt (press Enter to run). Auto-fires on command-not-found.
   dwim status       show the active model, daemon state, and device
+  dwim models       list configured models (correct/action) + connection state
   dwim help         show this help
 
 HOW IT WORKS
