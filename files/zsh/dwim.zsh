@@ -81,6 +81,10 @@ CONFIG
       dwim-engine --status
       return $?
       ;;
+    models)
+      dwim-engine --models
+      return $?
+      ;;
   esac
   _dwim_dbg "--- dwim invoked; state=$_DWIM_STATE"
   if [[ ! -f "$_DWIM_STATE" ]]; then
