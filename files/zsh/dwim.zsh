@@ -136,3 +136,36 @@ _dwim_tab_widget() {
 zle -N _dwim_tab_widget
 bindkey '^I' _dwim_tab_widget      # Tab accepts the armed fix (or completes)
 
+# --- @intent agent palette ---------------------------------------------------
+# `_dwim_run_action <intent>`: ask the Claude agent, fzf-pick a command, load it.
+_dwim_run_action() {
+  local intent="$1"
+  [[ -z "$intent" ]] && return 1
+  local out
+  out="$(dwim-action "$intent")"   # answer→stderr (shown live), commands→stdout
+  [[ -z "$out" ]] && { print -u2 "dwim: no command suggested"; return 1 }
+  local pick
+  pick="$(printf '%s\n' "$out" | fzf --height 40% --reverse \
+            --prompt 'dwim@ ' --header 'pick a command · Esc cancels')"
+  [[ -n "$pick" ]] && _dwim_load "$pick"
+}
+
+# accept-line wrapper: a line starting with '@' is an agent intent, not a
+# command. Delegates to whatever accept-line is currently installed (builtin
+# or a plugin wrapper like zsh-syntax-highlighting's/zsh-autosuggestions')
+# rather than the bare builtin, so we add @-detection without clobbering
+# other Enter-time behavior regardless of plugin load order.
+zle -A accept-line _dwim_orig_accept_line
+
+_dwim_at_accept() {
+  if [[ "$BUFFER" == @* ]]; then
+    local intent="${BUFFER#@}"
+    BUFFER=""
+    zle _dwim_orig_accept_line     # end the (now empty) line via the real widget
+    _dwim_run_action "$intent"
+    return
+  fi
+  zle _dwim_orig_accept_line
+}
+zle -N accept-line _dwim_at_accept
+
