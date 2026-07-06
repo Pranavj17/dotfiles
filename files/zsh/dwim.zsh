@@ -5,6 +5,7 @@
 typeset -g _DWIM_STATE="${XDG_CACHE_HOME:-$HOME/.cache}/dwim/last"
 typeset -g _DWIM_LAST_CMD=""
 typeset -g _DWIM_GHOST=""   # armed correction, shown as grey ghost text
+typeset -g DWIM_ICON="${DWIM_ICON:-✨}"   # prefix on the suggestion line; set to taste
 
 _dwim_preexec() {
   _DWIM_GHOST=""   # any command running clears a pending suggestion
@@ -35,7 +36,7 @@ _dwim_precmd() {
   if (( rc == 0 )) && [[ -n "$fix" && "$fix" != "$cmd" ]]; then
     _DWIM_GHOST="$fix"   # armed; Tab on the empty prompt fills it in
     # Grey preview line above the prompt (reliable — doesn't fight autosuggestions).
-    print -Pr -- "%F{244}🔮 ${fix}%f  %F{240}· Tab to accept%f"
+    print -Pr -- "%F{244}${DWIM_ICON} ${fix}%f  %F{240}· Tab to accept%f"
   elif (( rc == 4 )) && [[ -n "${commands[dwim-daemon]}" ]]; then
     # Daemon not up yet — warm it in the background for next time.
     (nohup dwim-daemon >/tmp/dwim-daemon.log 2>&1 &)
