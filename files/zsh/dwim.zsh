@@ -141,8 +141,10 @@ bindkey '^I' _dwim_tab_widget      # Tab accepts the armed fix (or completes)
 _dwim_run_action() {
   local intent="$1"
   [[ -z "$intent" ]] && return 1
+  print -u2 -n "   ⋯ claude is investigating…"
   local out
   out="$(dwim-action "$intent")"   # answer→stderr (shown live), commands→stdout
+  print -u2 -n "\r\033[K"          # clear the spinner line
   [[ -z "$out" ]] && { print -u2 "dwim: no command suggested"; return 1 }
   local pick
   pick="$(printf '%s\n' "$out" | fzf --height 40% --reverse \
