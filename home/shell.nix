@@ -12,7 +12,9 @@
     # Everything else — PATH, aliases, secret function, metabase helpers, rotate helpers,
     # PROMPT_SUBST belt-and-braces — lives in functions.zsh so the shell stays as shell.
     # readFile preserves bytes exactly (no Nix-string $ escaping needed).
-    initExtra = builtins.readFile ../files/zsh/functions.zsh;
+    # dwim.zsh appends the local-LLM command corrector (preexec/precmd + `dwim`).
+    initExtra = builtins.readFile ../files/zsh/functions.zsh
+      + "\n" + builtins.readFile ../files/zsh/dwim.zsh;
   };
 
   # direnv with the zsh hook auto-injected by HM. Replaces `eval "$(direnv hook zsh)"`.

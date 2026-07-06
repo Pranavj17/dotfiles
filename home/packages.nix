@@ -12,7 +12,8 @@
     nodejs_20
     yarn
 
-    # Python
+    # Python (general use). The `dwim` corrector's MLX runtime lives in a pip
+    # venv (~/.venvs/dwim) instead — Nix's mlx is CPU-only (no Metal backend).
     python311
 
     # AWS / infra
