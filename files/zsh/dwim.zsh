@@ -155,8 +155,6 @@ _dwim_run_action() {
 # or a plugin wrapper like zsh-syntax-highlighting's/zsh-autosuggestions')
 # rather than the bare builtin, so we add @-detection without clobbering
 # other Enter-time behavior regardless of plugin load order.
-zle -A accept-line _dwim_orig_accept_line
-
 _dwim_at_accept() {
   if [[ "$BUFFER" == @* ]]; then
     local intent="${BUFFER#@}"
@@ -167,5 +165,12 @@ _dwim_at_accept() {
   fi
   zle _dwim_orig_accept_line
 }
-zle -N accept-line _dwim_at_accept
+
+# Idempotent: if our widget is already installed (re-sourced shell), do
+# nothing — re-capturing would alias _dwim_orig_accept_line onto our own
+# wrapper and infinite-loop on Enter.
+if [[ "${widgets[accept-line]}" != user:_dwim_at_accept ]]; then
+  zle -A accept-line _dwim_orig_accept_line
+  zle -N accept-line _dwim_at_accept
+fi
 
