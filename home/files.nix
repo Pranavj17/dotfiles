@@ -11,7 +11,6 @@
     ".claude/statusline-command.sh"                 = { source = ../files/claude/statusline-command.sh;   executable = true; };
     ".claude/hooks/helixa-session-greeting.sh"      = { source = ../files/claude/hooks/helixa-session-greeting.sh; executable = true; };
     ".claude/statusline/probe-mini.sh"              = { source = ../files/claude/statusline/probe-mini.sh;     executable = true; };
-    ".claude/statusline/probe-import.sh"            = { source = ../files/claude/statusline/probe-import.sh;   executable = true; };
     ".claude/statusline/probe-triage.sh"            = { source = ../files/claude/statusline/probe-triage.sh;   executable = true; };
     ".claude/statusline/gen-greeter.sh"             = { source = ../files/claude/statusline/gen-greeter.sh;    executable = true; };
     ".claude/statusline/gen-slot.sh"                = { source = ../files/claude/statusline/gen-slot.sh;       executable = true; };
