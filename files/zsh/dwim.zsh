@@ -4,6 +4,7 @@
 
 typeset -g _DWIM_STATE="${XDG_CACHE_HOME:-$HOME/.cache}/dwim/last"
 typeset -g _DWIM_LAST_CMD=""
+typeset -g _DWIM_GHOST=""   # armed correction, shown as grey ghost text
 
 _dwim_preexec() {
   case "$1" in
@@ -31,8 +32,7 @@ _dwim_precmd() {
   fix="$(dwim-engine --cmd "$cmd" --exit 127 --daemon-only 2>>"$errdest")"
   local rc=$?
   if (( rc == 0 )) && [[ -n "$fix" && "$fix" != "$cmd" ]]; then
-    print -u2 "dwim 🔮 $fix"
-    _dwim_load "$fix"
+    _DWIM_GHOST="$fix"   # painted as grey ghost text on the next prompt (Tab/→ accepts)
   elif (( rc == 4 )) && [[ -n "${commands[dwim-daemon]}" ]]; then
     # Daemon not up yet — warm it in the background for next time.
     (nohup dwim-daemon >/tmp/dwim-daemon.log 2>&1 &)
@@ -109,4 +109,44 @@ CONFIG
   _dwim_dbg "loading onto buffer via print -z"
   _dwim_load "$suggestion"
 }
+
+# --- Grey ghost-text rendering (accept with Tab or →) -------------------------
+# Shows an armed correction ($_DWIM_GHOST) as grey text on an EMPTY prompt, the
+# way autosuggestions shows history hints. We only touch POSTDISPLAY when the
+# buffer is empty; autosuggestions only touches it when non-empty, so they never
+# collide. Uses add-zle-hook-widget (multi-hook API) so we don't clobber it.
+typeset -g DWIM_GHOST_STYLE="${DWIM_GHOST_STYLE:-fg=8}"   # 8 = bright-black (grey)
+
+_dwim_ghost_redraw() {
+  if [[ -n "$_DWIM_GHOST" && -z "$BUFFER" ]]; then
+    POSTDISPLAY="$_DWIM_GHOST"
+    region_highlight+=("0 ${#_DWIM_GHOST} ${DWIM_GHOST_STYLE}")
+  elif [[ -n "$_DWIM_GHOST" ]]; then
+    POSTDISPLAY=""            # user started typing — hand off to autosuggestions
+    _DWIM_GHOST=""
+  fi
+}
+
+_dwim_ghost_accept() {
+  BUFFER="$_DWIM_GHOST"
+  CURSOR=${#BUFFER}
+  POSTDISPLAY=""
+  _DWIM_GHOST=""
+}
+
+# Tab: accept the ghost if one is showing, else fall through to normal
+# completion. (Right-arrow stays owned by autosuggestions; the ghost only shows
+# on an empty buffer where autosuggestions is idle, so Tab avoids all conflict.)
+_dwim_tab_widget() {
+  if [[ -n "$_DWIM_GHOST" && -z "$BUFFER" ]]; then
+    _dwim_ghost_accept
+  else
+    zle expand-or-complete
+  fi
+}
+zle -N _dwim_tab_widget
+
+autoload -Uz add-zle-hook-widget
+add-zle-hook-widget line-pre-redraw _dwim_ghost_redraw
+bindkey '^I' _dwim_tab_widget      # Tab accepts the ghost (or completes)
 
