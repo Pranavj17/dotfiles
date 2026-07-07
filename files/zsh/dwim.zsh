@@ -271,7 +271,7 @@ _dwim_panel() {
   out+=("$(print -Pr -- "%F{240}┌ ${cmd} %f")")
   [[ -n "$body" ]] && out+=("$(print -r -- "${body}" | sed 's/^/  /')")
   if [[ "$exit_code" == 0 ]]; then
-    out+=("$(print -Pr -- "%F{240}└%f %F{34}✓ ${exit_code}%f${tag}")")
+    out+=("$(print -Pr -- "%F{240}└%f %F{34}✓%f${tag}")")
   else
     out+=("$(print -Pr -- "%F{240}└%f %F{196}✗ ${exit_code}%f${tag}")")
   fi
