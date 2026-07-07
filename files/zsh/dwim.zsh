@@ -170,6 +170,7 @@ _dwim_at_parse() {
 # `_dwim_run_action <intent> [tier]`: ask the Claude agent, fzf-pick a command, load it.
 # tier defaults to "fast"; "deep" routes dwim-action to the deep model tier.
 _dwim_run_action() {
+  setopt localoptions no_xtrace no_verbose   # never leak dwim internals under `set -x`
   local intent="$1" tier="${2:-fast}"
   [[ -z "$intent" ]] && return 1
   zmodload zsh/datetime 2>/dev/null
@@ -258,6 +259,7 @@ _dwim_run_action() {
 #                "show me" became `show: command not found`). Use ! to run a
 #                literal command you typed.
 _dwim_custom_route() {
+  setopt localoptions no_xtrace no_verbose
   local line="$1" model="$2"
   [[ -z "$line" ]] && return 1
   if [[ "$line" == @* ]]; then
@@ -278,7 +280,8 @@ _dwim_panel() {
   local rfile="${XDG_CACHE_HOME:-$HOME/.cache}/dwim/last_result"
   local tag=""; [[ -n "$model" ]] && tag=" %F{244}· ${model}%f"
   local -a out
-  out+=("$(print -Pr -- "%F{240}┌ ${cmd} %f")")
+  local g=$'\033[38;5;240m' n=$'\033[0m'
+  out+=("${g}┌ ${cmd} ${n}")                          # cmd RAW — see _dwim_confirm
   [[ -n "$body" ]] && out+=("$(print -r -- "${body}" | sed 's/^/  /')")
   if [[ "$exit_code" == 0 ]]; then
     out+=("$(print -Pr -- "%F{240}└%f %F{34}✓%f${tag}")")
@@ -293,7 +296,12 @@ _dwim_panel() {
 # Ask before running a mutating command. Returns 0 (run) / 1 (skip).
 _dwim_confirm() {
   local cmd="$1" key
-  print -u2 -Pn "%F{214}⚠ run:%f ${cmd}  %F{240}[Enter runs · Esc skips]%f "
+  # Render $cmd RAW (-r), not via prompt expansion (-P): with prompt_subst on
+  # (starship sets it), -P would expand a literal "$w"/"$var" inside the command
+  # to empty — so you'd approve `remove ""` while the engine actually runs
+  # `remove "$w"`. Consent must show exactly what runs. Colours via hard ANSI.
+  local y=$'\033[38;5;214m' g=$'\033[38;5;240m' n=$'\033[0m'
+  print -u2 -rn -- "${y}⚠ run:${n} ${cmd}  ${g}[Enter runs · Esc skips]${n} "
   read -k key
   print -u2 ""
   [[ "$key" == $'\n' || "$key" == $'\r' ]]
@@ -301,6 +309,7 @@ _dwim_confirm() {
 
 # Drive run → observe → repair for a single starting command.
 _dwim_execute_loop() {
+  setopt localoptions no_xtrace no_verbose   # keep info=/exit_code=/… assignments off the screen
   local cmd="$1" model="$2" steps=0
   local -a history_json
   while (( steps < 5 )); do
