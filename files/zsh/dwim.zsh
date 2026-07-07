@@ -226,10 +226,10 @@ _dwim_run_action() {
   local fzf_out fzf_rc query sel
   fzf_out="$(printf '%s\n' "$out" | fzf --height '~45%' --reverse --border --margin 0,0,0,2 \
             --delimiter='\t' --with-nth=1 --print-query \
-            --prompt 'do › or type a command · ' --pointer '▶' \
+            --prompt 'pick › or type to ask · ' --pointer '▶' \
             --preview='printf "%s" {2}' \
             --preview-window='down,3,wrap,border-top' \
-            --header 'pick one · or TYPE your own command / @intent · Enter · Esc cancels')"
+            --header 'pick one · TYPE to ask the agent · !cmd runs a command · Esc cancels')"
   fzf_rc=$?
   # Esc / Ctrl-C (130) cancels — do NOT run the typed query. --print-query prints
   # it even on abort, so we must gate on the exit code. 0 = a candidate selected,
@@ -243,24 +243,30 @@ _dwim_run_action() {
     print -Pr -- "%F{110}▸%f ${desc}"        # echo the option you chose, then run it
     _dwim_execute_loop "$cmd" "$model"
   elif [[ -n "$query" ]]; then
-    # Typed text that matched no suggestion → run it yourself (decision C):
-    # bare → classify + consent-gate + run; @/@@ → a new agent turn on the thread.
+    # Typed text that matched no suggestion → route it: bare prose asks the agent,
+    # !cmd runs a literal command, @/@@ starts a new agent turn on the thread.
     print -Pr -- "%F{110}▸%f ${query}"
     _dwim_custom_route "$query" "$model"
   fi
 }
 
-# Route a command you TYPED into the picker (decision C):
-#   bare text  → run as a command through the execute loop (classify→consent→run)
-#   @/@@ text  → a new agent turn on the same thread (via _dwim_at_parse)
+# Route a line you TYPED into the picker:
+#   @/@@ text  → a new agent turn on the same thread (fast / deep)
+#   !command   → run that exact command (classify → consent → run)
+#   bare text  → a follow-up question to the agent (fast). Typing prose into the
+#                palette ASKS — it is NOT shoved through /bin/sh (which is how
+#                "show me" became `show: command not found`). Use ! to run a
+#                literal command you typed.
 _dwim_custom_route() {
   local line="$1" model="$2"
   [[ -z "$line" ]] && return 1
   if [[ "$line" == @* ]]; then
     local parsed; parsed="$(_dwim_at_parse "$line")"
     _dwim_run_action "${parsed#*$'\t'}" "${parsed%%$'\t'*}"
+  elif [[ "$line" == '!'* ]]; then
+    _dwim_execute_loop "${${line#\!}# }" "$model"   # explicit: run this exact command
   else
-    _dwim_execute_loop "$line" "$model"
+    _dwim_run_action "$line" fast                    # bare prose → ask the agent
   fi
 }
 
