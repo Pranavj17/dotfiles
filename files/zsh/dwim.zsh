@@ -66,7 +66,10 @@ USAGE
                     prompt (press Enter to run). Auto-fires on command-not-found.
   dwim status       show the active model, daemon state, and device
   dwim models       list configured models (correct/action) + connection state
+  dwim last         reprint the last @ result panel (also: ↑ on an empty prompt)
   dwim help         show this help
+
+  @intent           ask the agent (fast model); @@intent uses the deep model
 
 HOW IT WORKS
   A typo'd command (command not found) auto-suggests a fix via a warm local
@@ -85,6 +88,11 @@ CONFIG
     models)
       dwim-engine --models
       return $?
+      ;;
+    last|replay)
+      command cat "${XDG_CACHE_HOME:-$HOME/.cache}/dwim/last_result" 2>/dev/null \
+        || print -u2 -Pr -- "%F{240}· no recent dwim result%f"
+      return 0
       ;;
   esac
   _dwim_dbg "--- dwim invoked; state=$_DWIM_STATE"
@@ -171,16 +179,24 @@ _dwim_run_action() {
   [[ -n "$pick" ]] && _dwim_execute_loop "${pick##*$'\t'}"
 }
 
-# Render captured output as a bordered panel with a status line.
+# Render captured output as a bordered panel with a status line + model tag.
+# Also stashes the rendered panel to ~/.cache/dwim/last_result and arms the
+# ↑-replay flag, so `dwim last` / ↑-on-empty-prompt can re-show it.
 _dwim_panel() {
-  local cmd="$1" body="$2" exit_code="$3"
-  print -Pr -- "%F{240}┌ ${cmd} %f"
-  [[ -n "$body" ]] && print -r -- "${body}" | sed 's/^/  /'
+  local cmd="$1" body="$2" exit_code="$3" model="${4:-}"
+  local rfile="${XDG_CACHE_HOME:-$HOME/.cache}/dwim/last_result"
+  local tag=""; [[ -n "$model" ]] && tag=" %F{244}· ${model}%f"
+  local -a out
+  out+=("$(print -Pr -- "%F{240}┌ ${cmd} %f")")
+  [[ -n "$body" ]] && out+=("$(print -r -- "${body}" | sed 's/^/  /')")
   if [[ "$exit_code" == 0 ]]; then
-    print -Pr -- "%F{240}└%f %F{34}✓ ${exit_code}%f"
+    out+=("$(print -Pr -- "%F{240}└%f %F{34}✓ ${exit_code}%f${tag}")")
   else
-    print -Pr -- "%F{240}└%f %F{196}✗ ${exit_code}%f"
+    out+=("$(print -Pr -- "%F{240}└%f %F{196}✗ ${exit_code}%f${tag}")")
   fi
+  printf '%s\n' "${out[@]}"                          # show now
+  printf '%s\n' "${out[@]}" > "$rfile" 2>/dev/null   # stash for replay
+  typeset -g _DWIM_REPLAY_FRESH=1
 }
 
 # Ask before running a mutating command. Returns 0 (run) / 1 (skip).
@@ -195,6 +211,7 @@ _dwim_confirm() {
 # Drive run → observe → repair for a single starting command.
 _dwim_execute_loop() {
   local cmd="$1" steps=0
+  local model; model="$(command cat "${XDG_CACHE_HOME:-$HOME/.cache}/dwim/last_model" 2>/dev/null)"
   local -a history_json
   while (( steps < 5 )); do
     (( steps++ ))
@@ -222,7 +239,7 @@ _dwim_execute_loop() {
       stderr="$(print -r -- "$info" | _dwim_json stderr)"
     fi
 
-    _dwim_panel "$cmd" "${stdout:-$stderr}" "$exit_code"
+    _dwim_panel "$cmd" "${stdout:-$stderr}" "$exit_code" "$model"
     [[ "$exit_code" == 0 ]] && return 0
 
     # Failure → repair (deterministic install / Claude), pick, loop.
@@ -285,5 +302,28 @@ if [[ -z "$_DWIM_ACCEPT_INSTALLED" ]]; then
   zle -A accept-line _dwim_orig_accept_line
   zle -N accept-line _dwim_at_accept
   typeset -g _DWIM_ACCEPT_INSTALLED=1
+fi
+
+# ↑ on an EMPTY prompt right after an @ run replays the last result panel; every
+# other time it's plain history. The fresh flag is armed when a panel renders and
+# cleared on the next command (preexec) or after one replay, so history nav is
+# never permanently hijacked. We call the BUILTIN via `.up-line-or-history`, so
+# there's no wrap cycle even if re-sourced.
+_dwim_replay_up() {
+  if [[ -z "$BUFFER" && -n "$_DWIM_REPLAY_FRESH" ]]; then
+    _DWIM_REPLAY_FRESH=""
+    zle -I
+    command cat "${XDG_CACHE_HOME:-$HOME/.cache}/dwim/last_result" 2>/dev/null
+    zle reset-prompt
+    return
+  fi
+  zle .up-line-or-history
+}
+autoload -Uz add-zsh-hook 2>/dev/null
+_dwim_clear_replay() { _DWIM_REPLAY_FRESH=""; }
+add-zsh-hook preexec _dwim_clear_replay 2>/dev/null
+if [[ -z "$_DWIM_UP_INSTALLED" ]]; then
+  zle -N up-line-or-history _dwim_replay_up
+  typeset -g _DWIM_UP_INSTALLED=1
 fi
 
