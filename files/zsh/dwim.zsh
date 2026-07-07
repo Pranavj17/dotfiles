@@ -67,6 +67,7 @@ USAGE
   dwim status       show the active model, daemon state, and device
   dwim models       list configured models (correct/action) + connection state
   dwim last         reprint the last @ result panel (also: ↑ on an empty prompt)
+  dwim new          start a fresh @ thread (forget the current conversation)
   dwim help         show this help
 
   @intent           ask the agent (fast model); @@intent uses the deep model
@@ -92,6 +93,11 @@ CONFIG
     last|replay)
       command cat "${XDG_CACHE_HOME:-$HOME/.cache}/dwim/last_result" 2>/dev/null \
         || print -u2 -Pr -- "%F{240}· no recent dwim result%f"
+      return 0
+      ;;
+    new)
+      typeset -g _DWIM_SESSION_ID="" _DWIM_SESSION_TURNS=0
+      print -Pr -- "%F{244}· thread reset%f"
       return 0
       ;;
   esac
@@ -160,11 +166,31 @@ _dwim_at_parse() {
 _dwim_run_action() {
   local intent="$1" tier="${2:-fast}"
   [[ -z "$intent" ]] && return 1
+  zmodload zsh/datetime 2>/dev/null
+  # A leading "new " (from @new / @@new) forces a fresh thread this turn.
+  local fresh=0
+  if [[ "$intent" == new\ * ]]; then fresh=1; intent="${intent#new }"; fi
+  local now=$EPOCHSECONDS
+  # Continue this terminal's thread unless: forced fresh, no session yet, or idle >15m.
+  local resume=""
+  if (( fresh )) || [[ -z "$_DWIM_SESSION_ID" ]] || (( now - ${_DWIM_SESSION_TS:-0} > 900 )); then
+    _DWIM_SESSION_ID=""; typeset -g _DWIM_SESSION_TURNS=0
+  else
+    resume="$_DWIM_SESSION_ID"
+    print -Pr -- "%F{244}↳ thread (${_DWIM_SESSION_TURNS})%f"
+  fi
+  local sessfile="${XDG_CACHE_HOME:-$HOME/.cache}/dwim/sess-$$"
   # dwim-action owns the live display: it streams the agent's tool calls (gray)
   # and prints the answer to stderr, which flows straight to the terminal here.
   # We only capture stdout — the tab-separated command candidates — for fzf.
   print -u2 ""                                        # fresh line below the committed @ command
-  local out; out="$(DWIM_TIER="$tier" dwim-action "$intent")"
+  local out
+  out="$(DWIM_TIER="$tier" DWIM_RESUME="$resume" DWIM_SESSION_FILE="$sessfile" \
+         dwim-action "$intent")"
+  # Capture this run's session id + advance the thread.
+  typeset -g _DWIM_SESSION_ID="$(command cat "$sessfile" 2>/dev/null)"
+  typeset -g _DWIM_SESSION_TURNS=$(( ${_DWIM_SESSION_TURNS:-0} + 1 ))
+  typeset -g _DWIM_SESSION_TS=$now
   # Capture THIS run's model right after the call so a later @@ can't make the
   # panel label go stale (the shared last_model file is per-process global).
   local model; model="$(command cat "${XDG_CACHE_HOME:-$HOME/.cache}/dwim/last_model" 2>/dev/null)"
