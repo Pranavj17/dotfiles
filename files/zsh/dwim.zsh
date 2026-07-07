@@ -136,16 +136,27 @@ _dwim_tab_widget() {
 zle -N _dwim_tab_widget
 bindkey '^I' _dwim_tab_widget      # Tab accepts the armed fix (or completes)
 
+# Parse an @-buffer into "<tier>\t<intent>". '@@' → deep, single '@' → fast.
+_dwim_at_parse() {
+  local buf="$1"
+  if [[ "$buf" == @@* ]]; then
+    print -r -- $'deep\t'"${buf#@@}"
+  else
+    print -r -- $'fast\t'"${buf#@}"
+  fi
+}
+
 # --- @intent agent palette ---------------------------------------------------
-# `_dwim_run_action <intent>`: ask the Claude agent, fzf-pick a command, load it.
+# `_dwim_run_action <intent> [tier]`: ask the Claude agent, fzf-pick a command, load it.
+# tier defaults to "fast"; "deep" routes dwim-action to the deep model tier.
 _dwim_run_action() {
-  local intent="$1"
+  local intent="$1" tier="${2:-fast}"
   [[ -z "$intent" ]] && return 1
   # dwim-action owns the live display: it streams the agent's tool calls (gray)
   # and prints the answer to stderr, which flows straight to the terminal here.
   # We only capture stdout — the tab-separated command candidates — for fzf.
   print -u2 ""                                        # fresh line below the committed @ command
-  local out; out="$(dwim-action "$intent")"
+  local out; out="$(DWIM_TIER="$tier" dwim-action "$intent")"
   [[ -z "$out" ]] && { print -u2 -Pr -- "%F{244}· no command to suggest%f"; return 1 }
   # Each line is "<plain-English description>\t<command>". fzf shows the
   # description; the raw command is previewed below (so you see exactly what
@@ -251,10 +262,13 @@ import sys, json; print(json.dumps(sys.argv[1]))' "$1" }
 # other Enter-time behavior regardless of plugin load order.
 _dwim_at_accept() {
   if [[ "$BUFFER" == @* ]]; then
-    local intent="${BUFFER#@}"
+    local parsed tier intent
+    parsed="$(_dwim_at_parse "$BUFFER")"
+    tier="${parsed%%$'\t'*}"
+    intent="${parsed#*$'\t'}"
     BUFFER=""
     zle _dwim_orig_accept_line     # end the (now empty) line via the real widget
-    _dwim_run_action "$intent"
+    _dwim_run_action "$intent" "$tier"
     return
   fi
   zle _dwim_orig_accept_line
