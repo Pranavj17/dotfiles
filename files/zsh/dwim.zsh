@@ -198,6 +198,10 @@ _dwim_run_action() {
   # Each line is "<plain-English description>\t<command>". fzf shows the
   # description; the raw command is previewed below (so you see exactly what
   # runs). Selecting loads the command onto the prompt — never auto-executes.
+  # Append the "type your own" escape-hatch as the final candidate.
+  # Whole literal in $'…' so BOTH the \n separator and the \t delimiter expand
+  # (a single-quoted \t would stay literal and break --delimiter).
+  out="$out"$'\n✎ type your own…\t__DWIM_CUSTOM__'
   local pick
   pick="$(printf '%s\n' "$out" | fzf --height '~45%' --reverse --border --margin 0,0,0,2 \
             --delimiter='\t' --with-nth=1 \
@@ -207,9 +211,36 @@ _dwim_run_action() {
             --header 'pick what to do · Enter loads the command · Esc cancels')"
   if [[ -n "$pick" ]]; then
     local desc="${pick%%$'\t'*}" cmd="${pick##*$'\t'}"
+    if [[ "$cmd" == "__DWIM_CUSTOM__" ]]; then
+      _dwim_custom_dispatch "$model"
+      return
+    fi
     print -Pr -- "%F{110}▸%f ${desc}"        # echo the option you chose, then run it
     _dwim_execute_loop "$cmd" "$model"
   fi
+}
+
+# Route a line typed into the "✎ type your own" entry (decision C):
+#   bare text  → run as a command through the execute loop (classify→consent→run)
+#   @/@@ text  → a new agent turn on the same thread (via _dwim_at_parse)
+_dwim_custom_route() {
+  local line="$1" model="$2"
+  [[ -z "$line" ]] && return 1
+  if [[ "$line" == @* ]]; then
+    local parsed; parsed="$(_dwim_at_parse "$line")"
+    _dwim_run_action "${parsed#*$'\t'}" "${parsed%%$'\t'*}"
+  else
+    _dwim_execute_loop "$line" "$model"
+  fi
+}
+
+# Prompt for one line, then route it. Read is separate from routing so the
+# routing is unit-testable without a tty.
+_dwim_custom_dispatch() {
+  local model="$1" line=""
+  print -u2 -Pn "%F{110}✎ %f"
+  read -r line
+  _dwim_custom_route "$line" "$model"
 }
 
 # Render captured output as a bordered panel with a status line + model tag.
