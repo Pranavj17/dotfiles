@@ -67,6 +67,7 @@ USAGE
   dwim status       show the active model, daemon state, and device
   dwim models       list configured models (correct/action) + connection state
   dwim last         reprint the last @ result panel (also: ↑ on an empty prompt)
+  dwim thinking     reprint the last @ run's live tool-call log (pipe to less)
   dwim new          start a fresh @ thread (forget the current conversation)
   dwim help         show this help
 
@@ -93,6 +94,11 @@ CONFIG
     last|replay)
       command cat "${XDG_CACHE_HOME:-$HOME/.cache}/dwim/last_result" 2>/dev/null \
         || print -u2 -Pr -- "%F{240}· no recent dwim result%f"
+      return 0
+      ;;
+    thinking)
+      command cat "${XDG_CACHE_HOME:-$HOME/.cache}/dwim/last_thinking" 2>/dev/null \
+        || print -u2 -Pr -- "%F{240}· no recent dwim thinking log%f"
       return 0
       ;;
     new)
@@ -184,9 +190,20 @@ _dwim_run_action() {
   # and prints the answer to stderr, which flows straight to the terminal here.
   # We only capture stdout — the tab-separated command candidates — for fzf.
   print -u2 ""                                        # fresh line below the committed @ command
-  local out
+  local thinkfile="${XDG_CACHE_HOME:-$HOME/.cache}/dwim/last_thinking"
+  local out rc=0
+  setopt localtraps          # restore the INT trap when this function returns
+  trap 'rc=130' INT          # Ctrl-C → mark cancelled, keep control (don't unwind)
   out="$(DWIM_TIER="$tier" DWIM_RESUME="$resume" DWIM_SESSION_FILE="$sessfile" \
-         dwim-action "$intent")"
+         dwim-action "$intent" 2> >(tee "$thinkfile" >&2))"
+  local child_rc=$?          # capture BEFORE the (( )) test below, which would
+                              # otherwise clobber $? with its own (false) result
+  (( rc == 130 )) || rc=$child_rc   # if the trap didn't fire, take the child's exit code
+  trap - INT
+  if (( rc == 130 )); then
+    print -u2 -Pr -- "%F{244}⊘ cancelled%f"
+    return 1                  # before thread-advance + picker: thread stays as-is
+  fi
   # Capture this run's session id + advance the thread.
   typeset -g _DWIM_SESSION_ID="$(command cat "$sessfile" 2>/dev/null)"
   typeset -g _DWIM_SESSION_TURNS=$(( ${_DWIM_SESSION_TURNS:-0} + 1 ))
