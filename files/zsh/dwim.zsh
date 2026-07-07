@@ -215,29 +215,39 @@ _dwim_run_action() {
   # Each line is "<plain-English description>\t<command>". fzf shows the
   # description; the raw command is previewed below (so you see exactly what
   # runs). Selecting loads the command onto the prompt — never auto-executes.
-  # Append the "type your own" escape-hatch as the final candidate.
-  # Whole literal in $'…' so BOTH the \n separator and the \t delimiter expand
-  # (a single-quoted \t would stay literal and break --delimiter).
-  out="$out"$'\n✎ type your own…\t__DWIM_CUSTOM__'
-  local pick
-  pick="$(printf '%s\n' "$out" | fzf --height '~45%' --reverse --border --margin 0,0,0,2 \
-            --delimiter='\t' --with-nth=1 \
-            --select-1 --exit-0 --prompt 'do › ' --pointer '▶' \
+  # `--print-query` lets you just TYPE a command (or an @intent) and Enter — even
+  # when it matches none of the listed suggestions — instead of a two-step "type
+  # your own" entry. fzf prints the typed query on line 1; a chosen candidate (if
+  # any) follows on line 2. NO --exit-0/--select-1: those made a non-matching
+  # query silently exit with nothing (the "dwim quit" bug).
+  local fzf_out fzf_rc query sel
+  fzf_out="$(printf '%s\n' "$out" | fzf --height '~45%' --reverse --border --margin 0,0,0,2 \
+            --delimiter='\t' --with-nth=1 --print-query \
+            --prompt 'do › or type a command · ' --pointer '▶' \
             --preview='printf "%s" {2}' \
             --preview-window='down,3,wrap,border-top' \
-            --header 'pick what to do · Enter loads the command · Esc cancels')"
-  if [[ -n "$pick" ]]; then
-    local desc="${pick%%$'\t'*}" cmd="${pick##*$'\t'}"
-    if [[ "$cmd" == "__DWIM_CUSTOM__" ]]; then
-      _dwim_custom_dispatch "$model"
-      return
-    fi
+            --header 'pick one · or TYPE your own command / @intent · Enter · Esc cancels')"
+  fzf_rc=$?
+  # Esc / Ctrl-C (130) cancels — do NOT run the typed query. --print-query prints
+  # it even on abort, so we must gate on the exit code. 0 = a candidate selected,
+  # 1 = typed text accepted with no match (run it); 130 = aborted (cancel).
+  (( fzf_rc == 130 )) && { print -u2 -Pr -- "%F{240}· cancelled%f"; return 1 }
+  query="${fzf_out%%$'\n'*}"
+  sel=""
+  [[ "$fzf_out" == *$'\n'* ]] && sel="${fzf_out#*$'\n'}"
+  if [[ -n "$sel" ]]; then
+    local desc="${sel%%$'\t'*}" cmd="${sel##*$'\t'}"
     print -Pr -- "%F{110}▸%f ${desc}"        # echo the option you chose, then run it
     _dwim_execute_loop "$cmd" "$model"
+  elif [[ -n "$query" ]]; then
+    # Typed text that matched no suggestion → run it yourself (decision C):
+    # bare → classify + consent-gate + run; @/@@ → a new agent turn on the thread.
+    print -Pr -- "%F{110}▸%f ${query}"
+    _dwim_custom_route "$query" "$model"
   fi
 }
 
-# Route a line typed into the "✎ type your own" entry (decision C):
+# Route a command you TYPED into the picker (decision C):
 #   bare text  → run as a command through the execute loop (classify→consent→run)
 #   @/@@ text  → a new agent turn on the same thread (via _dwim_at_parse)
 _dwim_custom_route() {
@@ -249,15 +259,6 @@ _dwim_custom_route() {
   else
     _dwim_execute_loop "$line" "$model"
   fi
-}
-
-# Prompt for one line, then route it. Read is separate from routing so the
-# routing is unit-testable without a tty.
-_dwim_custom_dispatch() {
-  local model="$1" line=""
-  print -u2 -Pn "%F{110}✎ %f"
-  read -r line
-  _dwim_custom_route "$line" "$model"
 }
 
 # Render captured output as a bordered panel with a status line + model tag.
