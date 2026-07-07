@@ -11,6 +11,7 @@ _dwim_preexec() {
   _DWIM_GHOST=""   # any command running clears a pending suggestion
   case "$1" in
     dwim|dwim\ *) _DWIM_LAST_CMD="" ;;   # never try to fix dwim itself
+    @*)           _DWIM_LAST_CMD="" ;;   # @intent is an agent request, not a typo
     *)            _DWIM_LAST_CMD="$1" ;;
   esac
 }
@@ -402,6 +403,29 @@ if [[ -z "$_DWIM_ACCEPT_INSTALLED" ]]; then
   zle -N accept-line _dwim_at_accept
   typeset -g _DWIM_ACCEPT_INSTALLED=1
 fi
+
+# Safety net: if the accept-line widget ever misses an `@intent` (e.g. the very
+# first command in a shell, or a plugin re-wrap ordering), the line falls through
+# to the shell as an unknown command → `command not found: @find`. Catch it here
+# and route to the agent instead of erroring. Chain to any pre-existing handler
+# (e.g. nix-index) for genuinely-unknown non-@ commands so we don't clobber it.
+if typeset -f command_not_found_handler >/dev/null 2>&1 \
+   && [[ -z "$_DWIM_CNF_INSTALLED" ]]; then
+  functions[_dwim_orig_cnf_handler]=$functions[command_not_found_handler]
+fi
+command_not_found_handler() {
+  if [[ "$1" == @* ]]; then
+    local parsed; parsed="$(_dwim_at_parse "$*")"   # $* keeps the whole @intent
+    _dwim_run_action "${parsed#*$'\t'}" "${parsed%%$'\t'*}"
+    return $?
+  fi
+  if typeset -f _dwim_orig_cnf_handler >/dev/null 2>&1; then
+    _dwim_orig_cnf_handler "$@"; return $?
+  fi
+  print -u2 "zsh: command not found: $1"
+  return 127
+}
+typeset -g _DWIM_CNF_INSTALLED=1
 
 # ↑ on an EMPTY prompt right after an @ run replays the last result panel; every
 # other time it's plain history. The fresh flag is armed when a panel renders and
