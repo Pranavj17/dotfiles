@@ -165,6 +165,9 @@ _dwim_run_action() {
   # We only capture stdout — the tab-separated command candidates — for fzf.
   print -u2 ""                                        # fresh line below the committed @ command
   local out; out="$(DWIM_TIER="$tier" dwim-action "$intent")"
+  # Capture THIS run's model right after the call so a later @@ can't make the
+  # panel label go stale (the shared last_model file is per-process global).
+  local model; model="$(command cat "${XDG_CACHE_HOME:-$HOME/.cache}/dwim/last_model" 2>/dev/null)"
   [[ -z "$out" ]] && { print -u2 -Pr -- "%F{244}· no command to suggest%f"; return 1 }
   # Each line is "<plain-English description>\t<command>". fzf shows the
   # description; the raw command is previewed below (so you see exactly what
@@ -176,7 +179,11 @@ _dwim_run_action() {
             --preview='printf "%s" {2}' \
             --preview-window='down,3,wrap,border-top' \
             --header 'pick what to do · Enter loads the command · Esc cancels')"
-  [[ -n "$pick" ]] && _dwim_execute_loop "${pick##*$'\t'}"
+  if [[ -n "$pick" ]]; then
+    local desc="${pick%%$'\t'*}" cmd="${pick##*$'\t'}"
+    print -Pr -- "%F{110}▸%f ${desc}"        # echo the option you chose, then run it
+    _dwim_execute_loop "$cmd" "$model"
+  fi
 }
 
 # Render captured output as a bordered panel with a status line + model tag.
@@ -210,8 +217,7 @@ _dwim_confirm() {
 
 # Drive run → observe → repair for a single starting command.
 _dwim_execute_loop() {
-  local cmd="$1" steps=0
-  local model; model="$(command cat "${XDG_CACHE_HOME:-$HOME/.cache}/dwim/last_model" 2>/dev/null)"
+  local cmd="$1" model="$2" steps=0
   local -a history_json
   while (( steps < 5 )); do
     (( steps++ ))
