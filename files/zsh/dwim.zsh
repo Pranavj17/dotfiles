@@ -278,14 +278,19 @@ _dwim_custom_route() {
 # Also stashes the rendered panel to ~/.cache/dwim/last_result and arms the
 # ↑-replay flag, so `dwim last` / ↑-on-empty-prompt can re-show it.
 _dwim_panel() {
-  local cmd="$1" body="$2" exit_code="$3" model="${4:-}" dur="${5:-}"
+  local cmd="$1" body="$2" exit_code="$3" model="${4:-}" dur="${5:-}" cmd_hl="${6:-}"
   local rfile="${XDG_CACHE_HOME:-$HOME/.cache}/dwim/last_result"
   local tag=""; [[ -n "$model" ]] && tag=" %F{244}· ${model}%f"
   # Show how long the command took (e.g. "· 0.34s") when the engine reported it.
   [[ -n "$dur" ]] && tag=" %F{244}· ${dur}s%f${tag}"
   local -a out
   local g=$'\033[38;5;240m' n=$'\033[0m'
-  out+=("${g}┌ ${cmd} ${n}")                          # cmd RAW — see _dwim_confirm
+  # Header shows the syntax-highlighted command when supplied (DISPLAY ONLY —
+  # lossless, strips back to $cmd; nothing here executes it), else the raw $cmd.
+  # cmd_hl carries its own \033[…m escapes; the trailing ${n} resets so the gray
+  # border colour is restored regardless. See _dwim_confirm for the -r rationale.
+  local shown="${cmd_hl:-$cmd}"
+  out+=("${g}┌ ${shown} ${n}")                        # cmd RAW/highlighted — see _dwim_confirm
   [[ -n "$body" ]] && out+=("$(print -r -- "${body}" | sed 's/^/  /')")
   if [[ "$exit_code" == 0 ]]; then
     out+=("$(print -Pr -- "%F{240}└%f %F{34}✓%f${tag}")")
@@ -299,13 +304,18 @@ _dwim_panel() {
 
 # Ask before running a mutating command. Returns 0 (run) / 1 (skip).
 _dwim_confirm() {
-  local cmd="$1" key
-  # Render $cmd RAW (-r), not via prompt expansion (-P): with prompt_subst on
+  local cmd="$1" cmd_hl="$2" key
+  # Show the syntax-highlighted command when we have one, else the raw command.
+  # DISPLAY ONLY — cmd_hl is lossless (strips back to $cmd) and nothing here runs
+  # it; the caller runs the raw $cmd. read -k only reads a keypress.
+  local shown="${cmd_hl:-$cmd}"
+  # Render $shown RAW (-r), not via prompt expansion (-P): with prompt_subst on
   # (starship sets it), -P would expand a literal "$w"/"$var" inside the command
   # to empty — so you'd approve `remove ""` while the engine actually runs
-  # `remove "$w"`. Consent must show exactly what runs. Colours via hard ANSI.
+  # `remove "$w"`. Consent must show exactly what runs. Colours via hard ANSI —
+  # cmd_hl's literal \033[…m escapes print correctly through -rn.
   local y=$'\033[38;5;214m' g=$'\033[38;5;240m' n=$'\033[0m'
-  print -u2 -rn -- "${y}⚠ run:${n} ${cmd}  ${g}[Enter runs · Esc skips]${n} "
+  print -u2 -rn -- "${y}⚠ run:${n} ${shown}  ${g}[Enter runs · Esc skips]${n} "
   read -k key
   print -u2 ""
   [[ "$key" == $'\n' || "$key" == $'\r' ]]
@@ -319,13 +329,16 @@ _dwim_execute_loop() {
   while (( steps < 5 )); do
     (( steps++ ))
     local info; info="$(dwim-engine --run "$cmd")"
-    local interactive read_only ran exit_code stdout stderr duration
+    local interactive read_only ran exit_code stdout stderr duration cmd_hl
     interactive="$(print -r -- "$info" | _dwim_json interactive)"
     read_only="$(print -r -- "$info" | _dwim_json read_only)"
     ran="$(print -r -- "$info" | _dwim_json ran)"
     exit_code="$(print -r -- "$info" | _dwim_json exit)"
     stdout="$(print -r -- "$info" | _dwim_json stdout)"
     stderr="$(print -r -- "$info" | _dwim_json stderr)"
+    # DISPLAY-ONLY syntax-highlighted command (lossless: strips back to $cmd).
+    # Never executed — the raw $cmd is what runs below.
+    cmd_hl="$(print -r -- "$info" | _dwim_json cmd_hl)"
 
     # Present interactive tool → hand full-screen to your shell (you Enter).
     # (A MISSING interactive tool comes back exit 127 and falls through to repair.)
@@ -335,7 +348,7 @@ _dwim_execute_loop() {
     fi
     # Mutating command not yet run → confirm, then force-run and re-read result.
     if [[ "$interactive" != "true" && "$ran" != "true" ]]; then
-      _dwim_confirm "$cmd" || { print -u2 -Pr -- "%F{240}· skipped%f"; return 1 }
+      _dwim_confirm "$cmd" "$cmd_hl" || { print -u2 -Pr -- "%F{240}· skipped%f"; return 1 }
       info="$(dwim-engine --run "$cmd" --force)"
       exit_code="$(print -r -- "$info" | _dwim_json exit)"
       stdout="$(print -r -- "$info" | _dwim_json stdout)"
@@ -343,7 +356,7 @@ _dwim_execute_loop() {
     fi
 
     duration="$(print -r -- "$info" | _dwim_json duration)"   # from the run that actually executed
-    _dwim_panel "$cmd" "${stdout:-$stderr}" "$exit_code" "$model" "$duration"
+    _dwim_panel "$cmd" "${stdout:-$stderr}" "$exit_code" "$model" "$duration" "$cmd_hl"
     [[ "$exit_code" == 0 ]] && return 0
 
     # Failure → repair (deterministic install / Claude), pick, loop.
