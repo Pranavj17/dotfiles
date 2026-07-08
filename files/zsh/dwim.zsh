@@ -67,12 +67,15 @@ USAGE
                     prompt (press Enter to run). Auto-fires on command-not-found.
   dwim status       show the active model, daemon state, and device
   dwim models       list configured models (correct/action) + connection state
+  dwim personas     list @ personas (prompt-only domain experts) + their dir
   dwim last         reprint the last @ result panel (also: ↑ on an empty prompt)
   dwim thinking     reprint the last @ run's live tool-call log (pipe to less)
   dwim new          start a fresh @ thread (forget the current conversation)
   dwim help         show this help
 
   @intent           ask the agent (fast model); @@intent uses the deep model
+  @<persona> intent add a domain expert's system prompt (see 'dwim personas'),
+                    e.g. @git undo my last commit — word-1 must match exactly
 
 HOW IT WORKS
   A typo'd command (command not found) auto-suggests a fix via a warm local
@@ -90,6 +93,10 @@ CONFIG
       ;;
     models)
       dwim-engine --models
+      return $?
+      ;;
+    personas)
+      dwim-engine --personas
       return $?
       ;;
     last|replay)
