@@ -67,12 +67,15 @@ USAGE
                     prompt (press Enter to run). Auto-fires on command-not-found.
   dwim status       show the active model, daemon state, and device
   dwim models       list configured models (correct/action) + connection state
+  dwim personas     list @ personas (prompt-only domain experts) + their dir
   dwim last         reprint the last @ result panel (also: ↑ on an empty prompt)
   dwim thinking     reprint the last @ run's live tool-call log (pipe to less)
   dwim new          start a fresh @ thread (forget the current conversation)
   dwim help         show this help
 
   @intent           ask the agent (fast model); @@intent uses the deep model
+  @<persona> intent add a domain expert's system prompt (see 'dwim personas'),
+                    e.g. @git undo my last commit — word-1 must match exactly
 
 HOW IT WORKS
   A typo'd command (command not found) auto-suggests a fix via a warm local
@@ -90,6 +93,10 @@ CONFIG
       ;;
     models)
       dwim-engine --models
+      return $?
+      ;;
+    personas)
+      dwim-engine --personas
       return $?
       ;;
     last|replay)
@@ -185,7 +192,8 @@ _dwim_run_action() {
     _DWIM_SESSION_ID=""; typeset -g _DWIM_SESSION_TURNS=0
   else
     resume="$_DWIM_SESSION_ID"
-    print -Pr -- "%F{244}↳ thread (${_DWIM_SESSION_TURNS})%f"
+    # Thread continuity is shown IN the engine's spinner/breadcrumb (via
+    # DWIM_THREAD below), not as a separate line glued to the typed command.
   fi
   local sessfile="${XDG_CACHE_HOME:-$HOME/.cache}/dwim/sess-$$"
   # dwim-action owns the live display: it streams the agent's tool calls (gray)
@@ -200,7 +208,7 @@ _dwim_run_action() {
   setopt localtraps          # restore the INT trap when this function returns
   trap 'rc=130' INT          # Ctrl-C → mark cancelled, keep control (don't unwind)
   out="$(DWIM_TIER="$tier" DWIM_RESUME="$resume" DWIM_SESSION_FILE="$sessfile" \
-         dwim-action "$intent")"
+         DWIM_THREAD="$_DWIM_SESSION_TURNS" dwim-action "$intent")"
   local child_rc=$?          # capture BEFORE the (( )) test below, which would
                               # otherwise clobber $? with its own (false) result
   (( rc == 130 )) || rc=$child_rc   # if the trap didn't fire, take the child's exit code
@@ -216,7 +224,10 @@ _dwim_run_action() {
   # Capture THIS run's model right after the call so a later @@ can't make the
   # panel label go stale (the shared last_model file is per-process global).
   local model; model="$(command cat "${XDG_CACHE_HOME:-$HOME/.cache}/dwim/last_model" 2>/dev/null)"
-  [[ -z "$out" ]] && { print -u2 -Pr -- "%F{244}· no command to suggest%f"; return 1 }
+  # No candidates → the ✦ answer above IS the result (e.g. a text/explain task).
+  # Nothing to pick; return 0 (not a failure) so $? stays clean — a non-zero here
+  # reddens the prompt and breaks `@question && next`. No footer: the answer speaks.
+  [[ -z "$out" ]] && return 0
   # Each line is "<plain-English description>\t<command>". fzf shows the
   # description; the raw command is previewed below (so you see exactly what
   # runs). Selecting loads the command onto the prompt — never auto-executes.
@@ -277,12 +288,19 @@ _dwim_custom_route() {
 # Also stashes the rendered panel to ~/.cache/dwim/last_result and arms the
 # ↑-replay flag, so `dwim last` / ↑-on-empty-prompt can re-show it.
 _dwim_panel() {
-  local cmd="$1" body="$2" exit_code="$3" model="${4:-}"
+  local cmd="$1" body="$2" exit_code="$3" model="${4:-}" dur="${5:-}" cmd_hl="${6:-}"
   local rfile="${XDG_CACHE_HOME:-$HOME/.cache}/dwim/last_result"
   local tag=""; [[ -n "$model" ]] && tag=" %F{244}· ${model}%f"
+  # Show how long the command took (e.g. "· 0.34s") when the engine reported it.
+  [[ -n "$dur" ]] && tag=" %F{244}· ${dur}s%f${tag}"
   local -a out
   local g=$'\033[38;5;240m' n=$'\033[0m'
-  out+=("${g}┌ ${cmd} ${n}")                          # cmd RAW — see _dwim_confirm
+  # Header shows the syntax-highlighted command when supplied (DISPLAY ONLY —
+  # lossless, strips back to $cmd; nothing here executes it), else the raw $cmd.
+  # cmd_hl carries its own \033[…m escapes; the trailing ${n} resets so the gray
+  # border colour is restored regardless. See _dwim_confirm for the -r rationale.
+  local shown="${cmd_hl:-$cmd}"
+  out+=("${g}┌ ${shown} ${n}")                        # cmd RAW/highlighted — see _dwim_confirm
   [[ -n "$body" ]] && out+=("$(print -r -- "${body}" | sed 's/^/  /')")
   if [[ "$exit_code" == 0 ]]; then
     out+=("$(print -Pr -- "%F{240}└%f %F{34}✓%f${tag}")")
@@ -296,13 +314,46 @@ _dwim_panel() {
 
 # Ask before running a mutating command. Returns 0 (run) / 1 (skip).
 _dwim_confirm() {
-  local cmd="$1" key
-  # Render $cmd RAW (-r), not via prompt expansion (-P): with prompt_subst on
+  local cmd="$1" cmd_hl="$2" key
+  # Show the syntax-highlighted command when we have one, else the raw command.
+  # DISPLAY ONLY — cmd_hl is lossless (strips back to $cmd) and nothing here runs
+  # it; the caller runs the raw $cmd. read -k only reads a keypress.
+  local shown="${cmd_hl:-$cmd}"
+  # dwim-write writes the last @ answer (out-of-band, not in the command), so the
+  # generic consent line can't show WHAT gets written. Preview it: target path,
+  # NEW vs OVERWRITES, and the first 3 lines of the answer to be written.
+  if [[ "$cmd" == dwim-write\ * ]]; then
+    # Parse <path> the way the shell will — (z) shell-word-splits (respects quotes),
+    # (Q) strips one quote level — so the previewed path matches what bin/dwim-write
+    # actually writes (naive prefix-strip mis-parsed a quoted/tilde/spaced path).
+    local -a _w; _w=(${(z)cmd}); local wp="${(Q)_w[2]}"; wp="${wp/#\~/$HOME}"
+    local la="${XDG_CACHE_HOME:-$HOME/.cache}/dwim/last_answer"
+    local status_line
+    if [[ -f "$wp" ]]; then
+      status_line=$'\033[38;5;214m⚠ OVERWRITES\033[0m ('"$(wc -c < "$wp" | tr -d ' ')"$' bytes)'
+    else
+      status_line=$'\033[38;5;114mNEW file\033[0m'
+    fi
+    print -u2 -rn -- $'\033[38;5;244m  → '"$wp"'  '"$status_line"$'\033[0m\n'
+    if [[ -s "$la" ]]; then
+      local bytes total; bytes="$(wc -c < "$la" | tr -d ' ')"
+      total="$(wc -l < "$la" | tr -d ' ')"; [[ -n "$(tail -c1 "$la")" ]] && (( total++ ))
+      print -u2 -rn -- $'\033[38;5;240m'
+      # `|| [[ -n $_l ]]` so a final line with NO trailing newline still prints —
+      # this preview is the safety surface; silently dropping it defeats the point.
+      head -3 "$la" | while IFS= read -r _l || [[ -n "$_l" ]]; do
+        print -u2 -rn -- "  │ ${_l}"$'\n'
+      done
+      print -u2 -rn -- "  … (${total} lines, ${bytes} B)"$'\033[0m\n'
+    fi
+  fi
+  # Render $shown RAW (-r), not via prompt expansion (-P): with prompt_subst on
   # (starship sets it), -P would expand a literal "$w"/"$var" inside the command
   # to empty — so you'd approve `remove ""` while the engine actually runs
-  # `remove "$w"`. Consent must show exactly what runs. Colours via hard ANSI.
+  # `remove "$w"`. Consent must show exactly what runs. Colours via hard ANSI —
+  # cmd_hl's literal \033[…m escapes print correctly through -rn.
   local y=$'\033[38;5;214m' g=$'\033[38;5;240m' n=$'\033[0m'
-  print -u2 -rn -- "${y}⚠ run:${n} ${cmd}  ${g}[Enter runs · Esc skips]${n} "
+  print -u2 -rn -- "${y}⚠ run:${n} ${shown}  ${g}[Enter runs · Esc skips]${n} "
   read -k key
   print -u2 ""
   [[ "$key" == $'\n' || "$key" == $'\r' ]]
@@ -316,13 +367,16 @@ _dwim_execute_loop() {
   while (( steps < 5 )); do
     (( steps++ ))
     local info; info="$(dwim-engine --run "$cmd")"
-    local interactive read_only ran exit_code stdout stderr
+    local interactive read_only ran exit_code stdout stderr duration cmd_hl
     interactive="$(print -r -- "$info" | _dwim_json interactive)"
     read_only="$(print -r -- "$info" | _dwim_json read_only)"
     ran="$(print -r -- "$info" | _dwim_json ran)"
     exit_code="$(print -r -- "$info" | _dwim_json exit)"
     stdout="$(print -r -- "$info" | _dwim_json stdout)"
     stderr="$(print -r -- "$info" | _dwim_json stderr)"
+    # DISPLAY-ONLY syntax-highlighted command (lossless: strips back to $cmd).
+    # Never executed — the raw $cmd is what runs below.
+    cmd_hl="$(print -r -- "$info" | _dwim_json cmd_hl)"
 
     # Present interactive tool → hand full-screen to your shell (you Enter).
     # (A MISSING interactive tool comes back exit 127 and falls through to repair.)
@@ -332,14 +386,15 @@ _dwim_execute_loop() {
     fi
     # Mutating command not yet run → confirm, then force-run and re-read result.
     if [[ "$interactive" != "true" && "$ran" != "true" ]]; then
-      _dwim_confirm "$cmd" || { print -u2 -Pr -- "%F{240}· skipped%f"; return 1 }
+      _dwim_confirm "$cmd" "$cmd_hl" || { print -u2 -Pr -- "%F{240}· skipped%f"; return 1 }
       info="$(dwim-engine --run "$cmd" --force)"
       exit_code="$(print -r -- "$info" | _dwim_json exit)"
       stdout="$(print -r -- "$info" | _dwim_json stdout)"
       stderr="$(print -r -- "$info" | _dwim_json stderr)"
     fi
 
-    _dwim_panel "$cmd" "${stdout:-$stderr}" "$exit_code" "$model"
+    duration="$(print -r -- "$info" | _dwim_json duration)"   # from the run that actually executed
+    _dwim_panel "$cmd" "${stdout:-$stderr}" "$exit_code" "$model" "$duration" "$cmd_hl"
     [[ "$exit_code" == 0 ]] && return 0
 
     # Failure → repair (deterministic install / Claude), pick, loop.
