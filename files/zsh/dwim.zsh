@@ -203,6 +203,38 @@ _dwim_run_action() {
   # A leading "new " (from @new / @@new) forces a fresh thread this turn.
   local fresh=0
   if [[ "$intent" == new\ * ]]; then fresh=1; intent="${intent#new }"; fi
+  # Agentic-loop offer: only for a plain fast @ with a task-shaped intent (not
+  # @@ deep, not @persona — a persona's name is word-1 so it never classifies as
+  # a task). The engine classifies locally; a miss costs one keystroke and falls
+  # through to the normal read-only answer below, so this never blocks a question.
+  if [[ "$tier" == fast ]]; then
+    local _kind
+    _kind=$(dwim-engine --classify "$intent" 2>/dev/null)
+    if [[ "$_kind" == task ]]; then
+      print -u2 -Pr -- "  %F{240}⤷ looks like a task, not a question.%f"
+      # One keypress (no Enter), same idiom as _dwim_confirm's read -k so it stays
+      # driveable from stdin: y/Y accepts the do-loop, anything else declines.
+      local _ans
+      print -u2 -n -- "  plan it as a do-loop? [y/N] "
+      read -k -u0 _ans   # -u0: one keypress from fd 0 (the tty interactively)
+      print -u2 ""
+      if [[ "$_ans" == [yY] ]]; then
+        local _planout _pf
+        _planout=$(dwim-engine --plan "$intent")
+        print -r -- "${_planout%$'\n'DWIM_PLAN_READY *}"   # show plan, hide sentinel line
+        _pf=$(print -r -- "$_planout" | sed -n 's/^DWIM_PLAN_READY //p')
+        if [[ -n "$_pf" ]]; then
+          if _dwim_confirm "approve & run this plan?"; then
+            dwim-engine --do --plan-file "$_pf"
+          else
+            print -u2 -Pr -- "  %F{240}cancelled.%f"
+          fi
+        fi
+        return 0
+      fi
+      # declined → fall through to the normal read-only answer below
+    fi
+  fi
   local now=$EPOCHSECONDS
   # Continue this terminal's thread unless: forced fresh, no session yet, or idle >15m.
   local resume=""
