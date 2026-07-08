@@ -68,6 +68,8 @@ USAGE
   dwim status       show the active model, daemon state, and device
   dwim models       list configured models (correct/action) + connection state
   dwim personas     list @ personas (prompt-only domain experts) + their dir
+  dwim index [dirs] build/update the local RAG index so @ can ground answers in
+                    your own notes/code (default roots: ~/Documents)
   dwim last         reprint the last @ result panel (also: ↑ on an empty prompt)
   dwim thinking     reprint the last @ run's live tool-call log (pipe to less)
   dwim new          start a fresh @ thread (forget the current conversation)
@@ -93,6 +95,11 @@ CONFIG
       ;;
     models)
       dwim-engine --models
+      return $?
+      ;;
+    index)
+      shift
+      dwim-engine --index "$@"    # build/update the local RAG index (default: ~/Documents)
       return $?
       ;;
     personas)
