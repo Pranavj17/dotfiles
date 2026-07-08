@@ -25,4 +25,8 @@ confirm="$(_dwim_confirm 'git rm "$w"' 2>&1 || true)"
 print -r -- "$confirm" | grep -q 'git rm "$w"' \
   || { echo 'FAIL: confirm prompt must show literal "$w" under prompt_subst'; exit 1 }
 
+# Duration (arg 5) shows in the footer when the engine reports it.
+dur="$(_dwim_panel "ls" "out" 0 haiku 0.34 2>&1)"
+print -r -- "$dur" | grep -q "0.34s" || { echo "FAIL: panel should show the command duration"; exit 1 }
+
 echo "PASS: dwim panel footer"

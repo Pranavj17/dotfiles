@@ -185,7 +185,8 @@ _dwim_run_action() {
     _DWIM_SESSION_ID=""; typeset -g _DWIM_SESSION_TURNS=0
   else
     resume="$_DWIM_SESSION_ID"
-    print -Pr -- "%F{244}↳ thread (${_DWIM_SESSION_TURNS})%f"
+    # Thread continuity is shown IN the engine's spinner/breadcrumb (via
+    # DWIM_THREAD below), not as a separate line glued to the typed command.
   fi
   local sessfile="${XDG_CACHE_HOME:-$HOME/.cache}/dwim/sess-$$"
   # dwim-action owns the live display: it streams the agent's tool calls (gray)
@@ -200,7 +201,7 @@ _dwim_run_action() {
   setopt localtraps          # restore the INT trap when this function returns
   trap 'rc=130' INT          # Ctrl-C → mark cancelled, keep control (don't unwind)
   out="$(DWIM_TIER="$tier" DWIM_RESUME="$resume" DWIM_SESSION_FILE="$sessfile" \
-         dwim-action "$intent")"
+         DWIM_THREAD="$_DWIM_SESSION_TURNS" dwim-action "$intent")"
   local child_rc=$?          # capture BEFORE the (( )) test below, which would
                               # otherwise clobber $? with its own (false) result
   (( rc == 130 )) || rc=$child_rc   # if the trap didn't fire, take the child's exit code
@@ -277,9 +278,11 @@ _dwim_custom_route() {
 # Also stashes the rendered panel to ~/.cache/dwim/last_result and arms the
 # ↑-replay flag, so `dwim last` / ↑-on-empty-prompt can re-show it.
 _dwim_panel() {
-  local cmd="$1" body="$2" exit_code="$3" model="${4:-}"
+  local cmd="$1" body="$2" exit_code="$3" model="${4:-}" dur="${5:-}"
   local rfile="${XDG_CACHE_HOME:-$HOME/.cache}/dwim/last_result"
   local tag=""; [[ -n "$model" ]] && tag=" %F{244}· ${model}%f"
+  # Show how long the command took (e.g. "· 0.34s") when the engine reported it.
+  [[ -n "$dur" ]] && tag=" %F{244}· ${dur}s%f${tag}"
   local -a out
   local g=$'\033[38;5;240m' n=$'\033[0m'
   out+=("${g}┌ ${cmd} ${n}")                          # cmd RAW — see _dwim_confirm
@@ -316,7 +319,7 @@ _dwim_execute_loop() {
   while (( steps < 5 )); do
     (( steps++ ))
     local info; info="$(dwim-engine --run "$cmd")"
-    local interactive read_only ran exit_code stdout stderr
+    local interactive read_only ran exit_code stdout stderr duration
     interactive="$(print -r -- "$info" | _dwim_json interactive)"
     read_only="$(print -r -- "$info" | _dwim_json read_only)"
     ran="$(print -r -- "$info" | _dwim_json ran)"
@@ -339,7 +342,8 @@ _dwim_execute_loop() {
       stderr="$(print -r -- "$info" | _dwim_json stderr)"
     fi
 
-    _dwim_panel "$cmd" "${stdout:-$stderr}" "$exit_code" "$model"
+    duration="$(print -r -- "$info" | _dwim_json duration)"   # from the run that actually executed
+    _dwim_panel "$cmd" "${stdout:-$stderr}" "$exit_code" "$model" "$duration"
     [[ "$exit_code" == 0 ]] && return 0
 
     # Failure → repair (deterministic install / Claude), pick, loop.
