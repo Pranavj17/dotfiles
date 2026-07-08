@@ -319,6 +319,27 @@ _dwim_confirm() {
   # DISPLAY ONLY — cmd_hl is lossless (strips back to $cmd) and nothing here runs
   # it; the caller runs the raw $cmd. read -k only reads a keypress.
   local shown="${cmd_hl:-$cmd}"
+  # dwim-write writes the last @ answer (out-of-band, not in the command), so the
+  # generic consent line can't show WHAT gets written. Preview it: target path,
+  # NEW vs OVERWRITES, and the first 3 lines of the answer to be written.
+  if [[ "$cmd" == dwim-write\ * ]]; then
+    local wp="${cmd#dwim-write }"; wp="${wp/#\~/$HOME}"
+    local la="${XDG_CACHE_HOME:-$HOME/.cache}/dwim/last_answer"
+    local status_line
+    if [[ -f "$wp" ]]; then
+      status_line=$'\033[38;5;214m⚠ OVERWRITES\033[0m ('"$(wc -c < "$wp" | tr -d ' ')"$' bytes)'
+    else
+      status_line=$'\033[38;5;114mNEW file\033[0m'
+    fi
+    print -u2 -rn -- $'\033[38;5;244m  → '"$wp"'  '"$status_line"$'\033[0m\n'
+    if [[ -s "$la" ]]; then
+      local total; total="$(wc -l < "$la" | tr -d ' ')"
+      print -u2 -rn -- $'\033[38;5;240m'; head -3 "$la" | while IFS= read -r _l; do
+        print -u2 -rn -- "  │ ${_l}"$'\n'
+      done
+      print -u2 -rn -- "  … (${total} lines)"$'\033[0m\n'
+    fi
+  fi
   # Render $shown RAW (-r), not via prompt expansion (-P): with prompt_subst on
   # (starship sets it), -P would expand a literal "$w"/"$var" inside the command
   # to empty — so you'd approve `remove ""` while the engine actually runs
