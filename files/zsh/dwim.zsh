@@ -323,7 +323,10 @@ _dwim_confirm() {
   # generic consent line can't show WHAT gets written. Preview it: target path,
   # NEW vs OVERWRITES, and the first 3 lines of the answer to be written.
   if [[ "$cmd" == dwim-write\ * ]]; then
-    local wp="${cmd#dwim-write }"; wp="${wp/#\~/$HOME}"
+    # Parse <path> the way the shell will — (z) shell-word-splits (respects quotes),
+    # (Q) strips one quote level — so the previewed path matches what bin/dwim-write
+    # actually writes (naive prefix-strip mis-parsed a quoted/tilde/spaced path).
+    local -a _w; _w=(${(z)cmd}); local wp="${(Q)_w[2]}"; wp="${wp/#\~/$HOME}"
     local la="${XDG_CACHE_HOME:-$HOME/.cache}/dwim/last_answer"
     local status_line
     if [[ -f "$wp" ]]; then
@@ -333,11 +336,15 @@ _dwim_confirm() {
     fi
     print -u2 -rn -- $'\033[38;5;244m  → '"$wp"'  '"$status_line"$'\033[0m\n'
     if [[ -s "$la" ]]; then
-      local total; total="$(wc -l < "$la" | tr -d ' ')"
-      print -u2 -rn -- $'\033[38;5;240m'; head -3 "$la" | while IFS= read -r _l; do
+      local bytes total; bytes="$(wc -c < "$la" | tr -d ' ')"
+      total="$(wc -l < "$la" | tr -d ' ')"; [[ -n "$(tail -c1 "$la")" ]] && (( total++ ))
+      print -u2 -rn -- $'\033[38;5;240m'
+      # `|| [[ -n $_l ]]` so a final line with NO trailing newline still prints —
+      # this preview is the safety surface; silently dropping it defeats the point.
+      head -3 "$la" | while IFS= read -r _l || [[ -n "$_l" ]]; do
         print -u2 -rn -- "  │ ${_l}"$'\n'
       done
-      print -u2 -rn -- "  … (${total} lines)"$'\033[0m\n'
+      print -u2 -rn -- "  … (${total} lines, ${bytes} B)"$'\033[0m\n'
     fi
   fi
   # Render $shown RAW (-r), not via prompt expansion (-P): with prompt_subst on
