@@ -105,8 +105,18 @@ CONFIG
       return 0
       ;;
     thinking)
-      command cat "${XDG_CACHE_HOME:-$HOME/.cache}/dwim/last_thinking" 2>/dev/null \
-        || print -u2 -Pr -- "%F{240}· no recent dwim thinking log%f"
+      local _tf="${XDG_CACHE_HOME:-$HOME/.cache}/dwim/last_thinking"
+      # The trace only holds TOOL calls. A self-contained @ answer (a table, a
+      # write, a knowledge reply) uses no tools, so the file exists but is empty —
+      # cat would print nothing at all. Distinguish empty (no tools) from missing
+      # (no run yet) so it never reads as silently broken.
+      if [[ -s "$_tf" ]]; then
+        command cat "$_tf"
+      elif [[ -f "$_tf" ]]; then
+        print -u2 -Pr -- "%F{240}· last @ answer used no tools — nothing to trace%f"
+      else
+        print -u2 -Pr -- "%F{240}· no recent @ run%f"
+      fi
       return 0
       ;;
     new)
