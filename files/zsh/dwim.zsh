@@ -225,8 +225,9 @@ _dwim_run_action() {
   # panel label go stale (the shared last_model file is per-process global).
   local model; model="$(command cat "${XDG_CACHE_HOME:-$HOME/.cache}/dwim/last_model" 2>/dev/null)"
   # No candidates → the ✦ answer above IS the result (e.g. a text/explain task),
-  # not a failure. Say so neutrally instead of "no command to suggest".
-  [[ -z "$out" ]] && { print -u2 -Pr -- "%F{244}· answer only%f"; return 1 }
+  # not a failure. Say so neutrally and return 0 so $? stays clean (a non-zero
+  # here reddens the prompt and breaks `@question && next`).
+  [[ -z "$out" ]] && { print -u2 -Pr -- "%F{244}· answer only%f"; return 0 }
   # Each line is "<plain-English description>\t<command>". fzf shows the
   # description; the raw command is previewed below (so you see exactly what
   # runs). Selecting loads the command onto the prompt — never auto-executes.
