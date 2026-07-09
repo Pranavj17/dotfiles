@@ -212,13 +212,11 @@ _dwim_run_action() {
     _kind=$(dwim-engine --classify "$intent" 2>/dev/null)
     if [[ "$_kind" == task ]]; then
       print -u2 -Pr -- "  %F{240}⤷ looks like a task, not a question.%f"
-      # One keypress (no Enter), same idiom as _dwim_confirm's read -k so it stays
-      # driveable from stdin: y/Y accepts the do-loop, anything else declines.
-      local _ans
-      print -u2 -n -- "  plan it as a do-loop? [y/N] "
-      read -k -u0 _ans   # -u0: one keypress from fd 0 (the tty interactively)
-      print -u2 ""
-      if [[ "$_ans" == [yY] ]]; then
+      # Reuse the run-style consent UI. _dwim_confirm reads a keypress FROM THE
+      # TERMINAL and WAITS (Enter = plan it, Esc = skip). The old hand-rolled
+      # `read -k -u0` read fd 0 — which is NOT the tty inside this handler — so it
+      # returned instantly and fell straight through without waiting for a reply.
+      if _dwim_confirm "plan & run this as a do-loop"; then
         local _planout _pf
         _planout=$(dwim-engine --plan "$intent")
         print -r -- "${_planout%$'\n'DWIM_PLAN_READY *}"   # show plan, hide sentinel line
