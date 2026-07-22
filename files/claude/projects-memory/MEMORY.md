@@ -31,3 +31,8 @@
 - [aqua signal-map ungated](aqua-signal-map-ungated.md) — TODO: aqua.pranavjagadish.com (DNS signal-map on Batman) is live+public+ungated; net layer tight, edge-auth gap; gate via tailnet-only (CLI) or Cloudflare Access (dashboard)
 - [home network topology](home-network-topology.md) — double-NAT (ISP→Archer C5 0.1→AX10 1.1), 3 SSIDs/APs; AdGuard on inner 192.168.1.x unreachable from 1st/2nd-floor nets; fix = recover Archer pwd (Tether, not factory-reset) + bridge all APs, or Tailscale per-device
 - [Helixa session role greeting](helixa-session-role-greeting.md) — MCP greets RM by role on first reply (whoami returns role/is_admin + GREETING nudge in build_instructions); no run-on-connect hook so it's an instructions nudge; shipped main 4ce6907
+- [dwim @ stream](dwim-at-tui.md) — @ stays inline; live stream is now a spinner→breadcrumb (not a wall); full-screen TUI was built then reverted (archived at tags)
+- [No reset --hard on dotfiles](feedback-no-reset-hard-dotfiles.md) — rewind via stash/revert, never reset --hard on a repo with uncommitted work; tag-archive discarded commits first
+- [zsh consent-display gotchas](zsh-consent-display-gotchas.md) — print -P eats $vars under prompt_subst (consent bug: shows `rm ""` but runs `rm "$w"`); set -x leaks internals → no_xtrace guard
+- [Scripbox GitLab token scopes](scripbox-gitlab-token-scopes.md) — keychain GITLAB_ACCESS_TOKEN = helixa-only bot; no local API cred for scripbox/apps → create MRs via push URL
+- [apps deploy Slack routing](apps-deploy-slack-routing.md) — per-app deploy-chart posts (slack_channel REQUIRED, gen fails if missing) + changelog-only #deployments; webhook honors channel field; deploy_production.sh DOES curl Slack (spec + channel-locked comment both wrong)

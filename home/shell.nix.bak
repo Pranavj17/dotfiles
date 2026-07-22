@@ -2,7 +2,7 @@
   programs.zsh = {
     enable = true;
 
-    # zsh-autosuggestions — fish-style gray inline hints from history (>/End to accept).
+    # zsh-autosuggestions — fish-style gray inline hints from history (→/End to accept).
     autosuggestion.enable = true;
 
     # zsh-syntax-highlighting — live command coloring. HM sources it last in the
@@ -11,12 +11,10 @@
 
     # Everything else — PATH, aliases, secret function, metabase helpers, rotate helpers,
     # PROMPT_SUBST belt-and-braces — lives in functions.zsh so the shell stays as shell.
+    # readFile preserves bytes exactly (no Nix-string $ escaping needed).
     # dwim.zsh appends the local-LLM command corrector (preexec/precmd + `dwim`).
-    # Sourced (not readFile-embedded) to keep .zshrc slim.
-    initExtra = ''
-      source "$HOME/dotfiles/files/zsh/functions.zsh"
-      source "$HOME/dotfiles/files/zsh/dwim.zsh"
-    '';
+    initExtra = builtins.readFile ../files/zsh/functions.zsh
+      + "\n" + builtins.readFile ../files/zsh/dwim.zsh;
   };
 
   # direnv with the zsh hook auto-injected by HM. Replaces `eval "$(direnv hook zsh)"`.

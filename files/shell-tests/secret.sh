@@ -8,7 +8,8 @@ ok(){ printf '  ok  %s\n' "$1"; pass=$((pass+1)); }
 bad(){ printf 'FAIL  %s\n' "$1"; fail=$((fail+1)); }
 
 fn=$(awk '/^secret\(\) \{/{f=1} f{print} f&&/^\}/{exit}' "$HOME/.zshrc")
-[ -n "$fn" ] || { echo "FAIL: could not extract secret() from ~/.zshrc"; exit 1; }
+[ -z "$fn" ] && fn=$(awk '/^secret\(\) \{/{f=1} f{print} f&&/^\}/{exit}' "$HOME/dotfiles/files/zsh/functions.zsh")
+[ -n "$fn" ] || { echo "FAIL: could not extract secret() from ~/.zshrc or ~/dotfiles/files/zsh/functions.zsh"; exit 1; }
 eval "$fn"
 
 export SECRET_ACCOUNT="shelltest-$$@example.com"

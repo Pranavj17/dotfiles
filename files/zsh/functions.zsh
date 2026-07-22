@@ -7,6 +7,9 @@ export PATH="$HOME/.local/bin:$PATH"
 # bun's global bin (where `bun install -g <pkg>` puts binaries — e.g. claude)
 export PATH="$HOME/.bun/bin:$PATH"
 
+# nanosandbox — lightweight VM sandboxes for code execution
+export PATH="$HOME/.nanosandbox/bin:$PATH"
+
 # Run all shell-tooling regression tests (statusline + secret helper)
 alias shelltest='bash ~/.config/shell-tests/run.sh'
 
@@ -167,3 +170,40 @@ seed-helixa-secrets() {
 # `$(starship prompt --right …)` string. Re-asserting it here is idempotent
 # and guarantees command-substitution in PROMPT/RPROMPT always expands.
 setopt PROMPT_SUBST
+
+# ── Claude Code model proxy (routes by model: DeepSeek->OpenRouter, Claude->Anthropic) ──
+# proxy     -> check status
+# proxy-up  -> start/restart via launchctl
+# proxy-down -> stop the proxy
+proxy() {
+  local raw=$(launchctl list com.claude.model-proxy 2>/dev/null)
+  local pid=$(echo "$raw" | sed -n 's/.*"PID"[[:space:]]*=[[:space:]]*\([0-9]\+\).*/\1/p')
+  if [[ -n "$pid" ]]; then
+    echo "Model proxy running (PID $pid)"
+    nc -z 127.0.0.1 9099 &>/dev/null && echo "  port 9099: open" || echo "  port 9099: closed"
+  else
+    echo "Model proxy NOT running"
+    echo "  Run: proxy-up"
+  fi
+}
+proxy-up() {
+  launchctl kickstart -kp "gui/$(id -u)/com.claude.model-proxy" 2>/dev/null \
+    || launchctl bootstrap "gui/$(id -u)" "$HOME/Library/LaunchAgents/com.claude.model-proxy.plist" 2>/dev/null
+  sleep 1
+  proxy
+}
+proxy-down() {
+  launchctl bootout "gui/$(id -u)/com.claude.model-proxy" 2>/dev/null && echo "Proxy stopped" || echo "Not running"
+}
+
+# Direct-mode fallbacks (bypass proxy, restart Claude Code needed)
+ds() {
+  ln -sf settings.deepseek.json "$HOME/.claude/settings.json" \
+    && echo "Switched to DeepSeek (OpenRouter direct) -- restart Claude Code" \
+    || echo "Failed"
+}
+cc() {
+  ln -sf settings.claude.json "$HOME/.claude/settings.json" \
+    && echo "Switched to Claude native -- restart Claude Code" \
+    || echo "Failed"
+}
