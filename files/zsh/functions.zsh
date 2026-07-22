@@ -84,6 +84,10 @@ export NVIDIA_API_KEY="$(secret get NVIDIA_API_KEY 2>/dev/null)"
 # https://login.tailscale.com/admin/settings/keys → `secret set TAILSCALE_API_KEY <new>`.
 export TAILSCALE_API_KEY="$(secret get TAILSCALE_API_KEY 2>/dev/null)"
 
+# OpenRouter (Anthropic API proxy) — routed via `claude model proxy`.
+# Key in Keychain via `secret set OPENROUTER_API_KEY <sk-or-v1-...>`.
+export ANTHROPIC_API_KEY="$(secret get OPENROUTER_API_KEY 2>/dev/null)"
+
 # ── Metabase (credentials in macOS Keychain — NOT plaintext) ────────────────
 # The password lives in the login Keychain, encrypted by macOS. To rotate it:
 #   security add-generic-password -a "$METABASE_USER" -s scripbox-metabase -w '<new-pw>' -U

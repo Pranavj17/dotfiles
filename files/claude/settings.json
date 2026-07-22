@@ -1,7 +1,6 @@
 {
   "env": {
     "ANTHROPIC_BASE_URL": "https://openrouter.ai/api",
-    "ANTHROPIC_API_KEY": "sk-or-...set-via-shell-env",
     "ANTHROPIC_CUSTOM_MODEL_OPTION": "deepseek/deepseek-v4-flash",
     "ANTHROPIC_CUSTOM_MODEL_OPTION_NAME": "DeepSeek V4 Flash",
     "ANTHROPIC_CUSTOM_MODEL_OPTION_DESCRIPTION": "OpenRouter"
