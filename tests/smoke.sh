@@ -22,17 +22,26 @@ bash "$HOME/.config/shell-tests/run.sh" >/dev/null && ok "shelltest 28/28" || ba
 echo "== starship prompt renders =="
 ( cd "$HOME" && starship prompt --terminal-width=120 >/dev/null ) && ok "starship prompt" || bad "starship prompt"
 
-echo "== claude config files symlinked =="
-for f in settings.json keybindings.json statusline-command.sh statusline/test.sh; do
-  [ -L "$HOME/.claude/$f" ] && ok ".claude/$f" || bad ".claude/$f"
+echo "== claude config files present =="
+for f in keybindings.json statusline-command.sh statusline/test.sh; do
+  [ -L "$HOME/.claude/$f" ] && ok ".claude/$f symlink" || bad ".claude/$f symlink"
 done
+# settings.json is NOT managed by HM — managed manually by ds/cc toggle
+[ -f "$HOME/.claude/settings.json" ] && ok ".claude/settings.json present" || bad ".claude/settings.json present"
 
-echo "== claude-bot daemon =="
+echo "== claude-bot daemon (must stay off) =="
+# Echo was disabled after unsolicited Slack DMs from dream cron (2026-07-28).
+# Fail smoke if the agent is running or the launchd job is still loaded.
 if launchctl print "gui/$UID/com.claude-bot.daemon" 2>/dev/null | grep -qE 'state\s*=\s*running'; then
-  ok "claude-bot launchd running"
+  bad "claude-bot launchd RUNNING (should be disabled)"
+elif launchctl print "gui/$UID/com.claude-bot.daemon" >/dev/null 2>&1; then
+  bad "claude-bot launchd still loaded (should be unloaded)"
+elif [ -f "$HOME/Library/LaunchAgents/com.claude-bot.daemon.plist" ]; then
+  bad "claude-bot plist still present under LaunchAgents"
 else
-  bad "claude-bot launchd NOT running"
+  ok "claude-bot launchd absent (expected)"
 fi
+
 
 echo
 [ "$fail" -eq 0 ] && echo "✅ smoke PASSED" || echo "❌ smoke FAILED"
