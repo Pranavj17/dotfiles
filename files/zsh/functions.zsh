@@ -4,6 +4,9 @@ export PATH="/opt/homebrew/bin:$PATH"
 # Personal scripts (e.g. har-extract)
 export PATH="$HOME/.local/bin:$PATH"
 
+# OpenGrok CLI
+export PATH="$HOME/.opengrok/bin:$PATH"
+
 # bun's global bin (where `bun install -g <pkg>` puts binaries — e.g. claude)
 export PATH="$HOME/.bun/bin:$PATH"
 
@@ -185,9 +188,9 @@ memory() {
     # Proxy already up — still keep fail-open pinned (cheap, no restart).
     _headroom_patch_failopen >/dev/null 2>&1 || true
   fi
-  exec /Users/pranav.j/.opengrok/bin/open-grok \
+  exec open-grok \
     --permission-mode bypassPermissions \
-    --cwd /Users/pranav.j/Documents/memory "$@"
+    --cwd "$HOME/Documents/memory" "$@"
 }
 
 # `memory-setup` — one-shot: register headroom MCP + Serena (slow pre-index OK).

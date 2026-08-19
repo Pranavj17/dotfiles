@@ -11,9 +11,10 @@
 
     # Everything else — PATH, aliases, secret function, metabase helpers, rotate helpers,
     # PROMPT_SUBST belt-and-braces — lives in functions.zsh so the shell stays as shell.
-    # Sourced (not readFile-embedded) to keep .zshrc slim.
+    # Source the flake inputs from the Nix store so the checkout may live anywhere.
     initExtra = ''
-      source "$HOME/dotfiles/files/zsh/functions.zsh"
+      source ${../files/zsh/functions.zsh}
+      source ${../files/zsh/dwim.zsh}
     '';
   };
 

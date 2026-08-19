@@ -12,9 +12,21 @@
 
   # Apple Silicon
   nixpkgs.hostPlatform = "aarch64-darwin";
+  nixpkgs.config = {
+    allowUnfree = true;
+    permittedInsecurePackages = [
+      "nodejs-20.20.2"
+      "nodejs-slim-20.20.2"
+    ];
+  };
 
   # The primary user for user-scoped options (homebrew, launchd.user.*).
-  system.primaryUser = "pranav.j";
+  system.primaryUser = "pranav";
+
+  users.users.pranav = {
+    name = "pranav";
+    home = "/Users/pranav";
+  };
 
   # Determinate Nix manages the Nix installation; disable nix-darwin's
   # native Nix management to avoid the "Determinate detected, aborting

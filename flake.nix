@@ -27,14 +27,24 @@
         };
       };
     in {
-      homeConfigurations."pranav.j" = home-manager.lib.homeManagerConfiguration {
+      homeConfigurations."pranav" = home-manager.lib.homeManagerConfiguration {
         inherit pkgs;
         modules = [ ./home/default.nix ];
       };
 
       darwinConfigurations."SB-111" = nix-darwin.lib.darwinSystem {
         inherit system;
-        modules = [ ./system/default.nix ];
+        modules = [
+          home-manager.darwinModules.home-manager
+          ./system/default.nix
+          {
+            home-manager.useGlobalPkgs = true;
+            home-manager.useUserPackages = true;
+            home-manager.users.pranav = {
+              imports = [ ./home/default.nix ];
+            };
+          }
+        ];
       };
     };
 }
