@@ -6,9 +6,9 @@
     ".config/shell-tests/secret.sh"     = { source = ../files/shell-tests/secret.sh;       executable = true; };
     ".config/shell-tests/run.sh"        = { source = ../files/shell-tests/run.sh;          executable = true; };
     ".config/alacritty/alacritty.toml" .source = ../files/alacritty/alacritty.toml;
-    ".claude/settings.json"                         .source = config.lib.file.mkOutOfStoreSymlink "${config.home.homeDirectory}/dotfiles/files/claude/settings.json";
+    # settings.json excluded — managed manually by ds/cc toggle functions
     ".claude/keybindings.json"                      .source = ../files/claude/keybindings.json;
-    ".claude/statusline-command.sh"                 = { source = ../files/claude/statusline-command.sh;   executable = true; };
+    ".claude/statusline-command.sh"                 = { source = ../files/claude/statusline-command.sh;   executable = true; force = true; };
     ".claude/hooks/helixa-session-greeting.sh"      = { source = ../files/claude/hooks/helixa-session-greeting.sh; executable = true; };
     ".claude/statusline/probe-mini.sh"              = { source = ../files/claude/statusline/probe-mini.sh;     executable = true; };
     ".claude/statusline/probe-import.sh"            = { source = ../files/claude/statusline/probe-import.sh;   executable = true; };

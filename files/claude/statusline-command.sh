@@ -42,9 +42,11 @@ fresh_read() { # $1=file $2=maxage -> contents only if newer than maxage
 }
 
 # ---- parse ALL JSON fields in one jq call ----
-# One field per line; mapfile -t keeps blank lines, so empty fields stay aligned
-# (a tab/space IFS `read` would collapse them and shift every field).
-mapfile -t F < <(
+# One field per line; IFS= read -r keeps blank lines, so empty fields stay
+# aligned (a tab/space IFS `read` would collapse them and shift every field).
+# NB: plain read loop, not mapfile — macOS ships bash 3.2 (no mapfile builtin).
+F=()
+while IFS= read -r _l; do F+=("$_l"); done < <(
   printf '%s' "$input" | jq -r '[
     (.workspace.current_dir // .cwd // ""),
     (.model.id // ""),
@@ -107,12 +109,12 @@ imp=$(cat /tmp/.claude-import 2>/dev/null)
 add "${f_ostyle:+${BLU}${f_ostyle}${R}}"
 
 # --- session cost ---
-[ -n "$f_cost" ] && add "${GRN}\$$(awk "BEGIN{printf \"%.2f\", $f_cost}")${R}"
+[ -n "$f_cost" ] && add "${GRN}\$$(awk -v c="$f_cost" 'BEGIN{printf "%.2f", c}')${R}"
 
 # --- tokens (rightmost), like /context ("192.8k tokens") ---
 if [ -n "$f_ctok" ]; then
-  if   [ "$f_ctok" -ge 1000000 ]; then ts=$(awk "BEGIN{printf \"%.1fM\", $f_ctok/1000000}")
-  elif [ "$f_ctok" -ge 1000 ];    then ts=$(awk "BEGIN{printf \"%.1fk\", $f_ctok/1000}")
+  if   [ "$f_ctok" -ge 1000000 ]; then ts=$(awk -v c="$f_ctok" 'BEGIN{printf "%.1fM", c/1000000}')
+  elif [ "$f_ctok" -ge 1000 ];    then ts=$(awk -v c="$f_ctok" 'BEGIN{printf "%.1fk", c/1000}')
   else ts="$f_ctok"; fi
   add "${DIM}${ts} tokens${R}"
 fi

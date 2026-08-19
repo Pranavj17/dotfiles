@@ -13,8 +13,10 @@ alias shelltest='bash ~/.config/shell-tests/run.sh'
 # direnv — auto-loads .envrc per directory
 eval "$(direnv hook zsh)"
 
-# `memory` — jump to the memory project and launch Claude Code (skips permission prompts)
-alias memory='cd /Users/pranav.j/Documents/memory && claude --dangerously-skip-permissions'
+# `memory` — live definition is in files/zsh/functions.zsh (sourced by HM).
+# Fast path: wrap with --no-mcp/--code-memory none (skip Serena pre-index).
+# Fallback if functions.zsh is not sourced:
+alias memory='cd /Users/pranav.j/Documents/memory && headroom wrap grok --no-proxy --no-mcp --code-memory none -- --permission-mode bypassPermissions'
 
 # `r-vpn` — connect/disconnect the DevOps SSL VPN via Tunnelblick. Usage: r-vpn [up|down|status]
 alias r-vpn='~/.vpn_connect'
