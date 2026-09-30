@@ -1,6 +1,5 @@
 .PHONY: install switch test update help
-USER := pranav.j
-HOST := $(shell hostname -s)
+DARWIN_HOST ?= SB-111
 
 help:
 	@echo "make install   - first-time bootstrap on a new machine"
@@ -12,19 +11,12 @@ install:
 	@command -v nix >/dev/null || (echo "Install Nix first: sh <(curl -L https://nixos.org/nix/install) --daemon" && exit 1)
 	git config core.hooksPath .githooks
 	chmod +x .githooks/pre-commit
-	sudo nix run nix-darwin -- switch --flake .#$(HOST)
-	nix run home-manager/release-24.11 -- switch --flake .#$(USER)
-	$(MAKE) test
+	$(MAKE) switch
 
-# `switch` applies BOTH layers:
-#   1. nix-darwin (system defaults, brew bundle, launchd) — needs sudo.
-#   2. home-manager (user env: zsh init, starship, packages, dotfiles).
-# darwin-rebuild does NOT activate HM unless wired explicitly; we keep them
-# separate so each can be debugged independently.
+# `switch` applies nix-darwin and its Home Manager user environment, then smoke.
+# scripts/switch.sh prints a short transcript instead of the raw activation log.
 switch:
-	sudo nix run nix-darwin -- switch --flake .#$(HOST)
-	nix run home-manager/release-24.11 -- switch --flake .#$(USER)
-	$(MAKE) test
+	DARWIN_HOST='$(DARWIN_HOST)' bash scripts/switch.sh
 
 test:
 	bash tests/smoke.sh

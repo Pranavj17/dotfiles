@@ -7,6 +7,12 @@
     fzf
     ripgrep
 
+    # git's own /nix/store/...-git-*/etc/gitconfig already sets
+    # credential.helper = osxkeychain. Do not also generate a Home Manager
+    # gitconfig; that duplicated the helper and, on stateVersion 24.11,
+    # injected gpg.program.
+    git
+
     # JS / Node
     bun
     nodejs_20
@@ -30,7 +36,15 @@
     # SSH / remote
     sshpass
 
+    # Was Homebrew. autojump's shell hook is sourced from shell.nix.
+    # colima keeps using ~/.colima; this is only the CLI.
+    autojump
+    colima
+    docker
+    docker-compose
+    ffmpeg
+
     # Fonts
-    meslo-lg
+    nerd-fonts.meslo-lg
   ];
 }

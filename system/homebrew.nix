@@ -28,16 +28,11 @@
 
     brews = [
       # CLI tools we want managed by brew (not Nix). Reasons to be here:
-      #   - macOS-specific tooling (autojump's profile.d hook expects /opt/homebrew)
-      #   - apps with native services (colima, ollama) that brew installs cleanly
-      #   - tools where the brew version is the canonical/blessed one (docker CLI)
+      #   - apps with a brew service (ollama)
+      #   - tools that stay on Homebrew on purpose (gh, kubectl, helm)
+      # autojump, colima, docker, docker-compose, and ffmpeg are Nix packages.
       # All of these were lost in the earlier brew bundle cleanup="uninstall"
       # incident; declared here so they survive every future `darwin-rebuild`.
-      "autojump"             # referenced by ~/.zshrc; `j <partial-dir>` jump
-      "colima"               # docker daemon backend (lightweight VM)
-      "docker"               # docker CLI
-      "docker-compose"       # compose plugin
-      "ffmpeg"               # video/audio processing
       "gh"                   # GitHub CLI
       "ghostscript"          # PDF/PS toolchain
       "helm"                 # k8s package manager
@@ -51,11 +46,13 @@
     ];
 
     casks = [
-      "alacritty"
+      # Alacritty's Homebrew cask was disabled on 2026-09-01 (Gatekeeper).
+      # The app comes from Nix via programs.alacritty; listing it here makes
+      # `brew bundle` abort the whole switch.
       "claude"
       "google-chrome"
-      "maccy"                # clipboard manager; restored after accidental cleanup
-      "tunnelblick"
+      # Maccy is the Nix package (home/files.nix symlinks the .app).
+      # Tunnelblick is gone; the work VPN is Tailscale, not OpenVPN.
       "visual-studio-code"   # VS Code GUI
       # NOTE: Tailscale.app exists in /Applications but was installed via DMG,
       # not brew cask — keep it that way (avoids re-install on next switch).

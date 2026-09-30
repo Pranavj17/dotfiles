@@ -7,8 +7,8 @@ export PATH="$HOME/.local/bin:$PATH"
 # Run all shell-tooling regression tests (statusline + secret helper)
 alias shelltest='bash ~/.config/shell-tests/run.sh'
 
-# autojump — `j <partial-dir-name>` jumps to frequently-used directories
-[ -f /opt/homebrew/etc/profile.d/autojump.sh ] && . /opt/homebrew/etc/profile.d/autojump.sh
+# autojump's `j` is sourced from the Nix package in home/shell.nix.
+# This file is not the live ~/.zshrc.
 
 # direnv — auto-loads .envrc per directory
 eval "$(direnv hook zsh)"
@@ -17,9 +17,6 @@ eval "$(direnv hook zsh)"
 # Fast path: wrap with --no-mcp/--code-memory none (skip Serena pre-index).
 # Fallback if functions.zsh is not sourced:
 alias memory='cd /Users/pranav.j/Documents/memory && headroom wrap grok --no-proxy --no-mcp --code-memory none -- --permission-mode bypassPermissions'
-
-# `r-vpn` — connect/disconnect the DevOps SSL VPN via Tunnelblick. Usage: r-vpn [up|down|status]
-alias r-vpn='~/.vpn_connect'
 
 # ── secret — universal macOS Keychain helper (keeps secrets out of dotfiles) ──
 # Secrets live in the login Keychain (encrypted by macOS), fetched on demand.

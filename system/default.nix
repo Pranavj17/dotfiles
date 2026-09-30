@@ -28,6 +28,12 @@
     home = "/Users/pranav";
   };
 
+  # nix-darwin defaults these to nano/less; set the editor explicitly.
+  environment.variables = {
+    EDITOR = "vim";
+    VISUAL = "vim";
+  };
+
   # Determinate Nix manages the Nix installation; disable nix-darwin's
   # native Nix management to avoid the "Determinate detected, aborting
   # activation" error.  Flakes + nix-command are already enabled by
